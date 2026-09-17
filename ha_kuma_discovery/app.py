@@ -6,6 +6,7 @@ import os
 import re
 import time
 import ipaddress
+import tempfile
 from pathlib import Path
 from typing import Dict, Any
 from urllib.parse import urljoin, urlparse
@@ -21,6 +22,8 @@ SUPERVISOR = "http://supervisor/"
 HA_WS = "ws://supervisor/core/websocket"
 HA_CONFIG_ENTRIES = Path("/homeassistant/.storage/core.config_entries")
 LOG = logging.getLogger("ha-kuma-discovery")
+# Headers (especially SUPERVISOR_TOKEN) remain request-local.
+HTTP = requests.Session()
 
 
 def read_options() -> Dict[str, Any]:
@@ -112,17 +115,62 @@ def read_options() -> Dict[str, Any]:
     return data
 
 
+def _read_state_file(path: Path) -> Dict[str, Any]:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError("State must be a JSON object")
+    return data
+
+
 def load_state() -> Dict[str, Any]:
-    if not STATE.exists():
-        return {"known_slugs": [], "known_shelly_device_ids": []}
+    for path in (STATE, STATE.with_suffix(".json.bak")):
+        try:
+            data = _read_state_file(path)
+        except FileNotFoundError:
+            continue
+        except (OSError, ValueError) as exc:
+            LOG.warning("Cannot read state file %s (%s)", path.name, type(exc).__name__)
+            continue
+        if path != STATE:
+            LOG.warning("Recovered state from backup %s", path.name)
+        return data
+    LOG.warning("No usable saved state; starting with empty state")
+    return {"known_slugs": [], "known_shelly_device_ids": []}
+
+
+def _atomic_write(path: Path, content: str) -> None:
+    # Same directory keeps os.replace on the same filesystem.
+    temp_path = None
     try:
-        return json.loads(STATE.read_text(encoding="utf-8"))
-    except Exception:
-        return {"known_slugs": [], "known_shelly_device_ids": []}
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", dir=path.parent,
+            prefix=path.name + ".", suffix=".tmp", delete=False,
+        ) as f:
+            temp_path = Path(f.name)
+            f.write(content)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(temp_path, path)
+    finally:
+        if temp_path is not None:
+            temp_path.unlink(missing_ok=True)
 
 
 def save_state(state: Dict[str, Any]) -> None:
-    STATE.write_text(json.dumps(state, indent=2, sort_keys=True), encoding="utf-8")
+    if not isinstance(state, dict):
+        raise ValueError("State must be a JSON object")
+    content = json.dumps(state, indent=2, sort_keys=True)
+    # Never replace a valid backup with a corrupt primary file.
+    try:
+        previous = _read_state_file(STATE)
+    except FileNotFoundError:
+        previous = None
+    except (OSError, ValueError) as exc:
+        LOG.warning("Skipping backup of unreadable state (%s)", type(exc).__name__)
+        previous = None
+    if previous is not None:
+        _atomic_write(STATE.with_suffix(".json.bak"), json.dumps(previous, indent=2, sort_keys=True))
+    _atomic_write(STATE, content)
 
 
 def supervisor_get(path: str) -> Any:
@@ -130,7 +178,7 @@ def supervisor_get(path: str) -> Any:
     if not token:
         raise RuntimeError("SUPERVISOR_TOKEN is unavailable.")
 
-    r = requests.get(
+    r = HTTP.get(
         urljoin(SUPERVISOR, path.lstrip("/")),
         headers={"Authorization": f"Bearer {token}"},
         timeout=20,
@@ -213,6 +261,8 @@ class HAWebSocket:
 
     def __enter__(self):
         if self.__class__._cycle_active:
+            if self.__class__._shared_ws is None:
+                self.__class__._shared_ws = self.__class__._open_socket()
             self.ws = self.__class__._shared_ws
             self._using_shared = True
             return self
@@ -245,25 +295,35 @@ class HAWebSocket:
 
         payload = dict(command)
         payload["id"] = msg_id
-        self.ws.send(json.dumps(payload))
+        try:
+            self.ws.send(json.dumps(payload))
+    
+            while True:
+                response = json.loads(self.ws.recv())
+                if response.get("id") != msg_id:
+                    continue
+                if response.get("type") != "result":
+                    continue
+                if not response.get("success"):
+                    raise RuntimeError(
+                        f"HA WebSocket command failed: {payload.get('type')}: "
+                        f"{response.get('error')}"
+                    )
+    
+                result = response.get("result")
+                if self.__class__._cycle_active:
+                    self.__class__._shared_cache[cache_key] = result
+                    self.__class__._network_calls += 1
+                return result
+        except (websocket.WebSocketException, OSError, ValueError):
+            try:
+                self.ws.close()
+            except Exception:
+                pass
+            if self._using_shared:
+                self.__class__._shared_ws = None
+            raise
 
-        while True:
-            response = json.loads(self.ws.recv())
-            if response.get("id") != msg_id:
-                continue
-            if response.get("type") != "result":
-                continue
-            if not response.get("success"):
-                raise RuntimeError(
-                    f"HA WebSocket command failed: {payload.get('type')}: "
-                    f"{response.get('error')}"
-                )
-
-            result = response.get("result")
-            if self.__class__._cycle_active:
-                self.__class__._shared_cache[cache_key] = result
-                self.__class__._network_calls += 1
-            return result
 
 
 def normalize_items(raw):
@@ -448,7 +508,7 @@ def push_status(kuma_url, monitor, up, message, verify_ssl):
     if not token:
         raise RuntimeError(f"Monitor '{monitor.get('name')}' has no push token")
 
-    r = requests.get(
+    r = HTTP.get(
         f"{kuma_url}/api/push/{token}",
         params={"status": "up" if up else "down", "msg": message[:250]},
         timeout=20,
@@ -3449,100 +3509,63 @@ def sync_unifi_network_devices(opts, api, monitors, default_notification_ids, st
 
 def sync_once(opts):
     state = load_state()
-
-    with UptimeKumaApi(
-        opts["kuma_url"],
-        timeout=30,
-        ssl_verify=opts["verify_ssl"],
-    ) as api:
-        api.login(opts["kuma_username"], opts["kuma_password"])
-        monitors = normalize_items(api.get_monitors())
-        default_notification_ids = get_default_notification_ids(api)
-
-        HAWebSocket.begin_cycle()
-        try:
-            if opts["discover_addons"]:
-                sync_addons(opts, api, monitors, default_notification_ids, state)
-
-            if opts["discover_shelly"]:
-                sync_shelly(opts, api, monitors, default_notification_ids, state)
-
-            if opts["discover_unifi_network_devices"]:
-                sync_unifi_network_devices(
-                    opts, api, monitors, default_notification_ids, state
-                )
-
-            if opts["discover_fritz_network_devices"]:
-                sync_fritz_network_devices(
-                    opts, api, monitors, default_notification_ids, state
-                )
-
-            if opts["discover_fully_kiosk_devices"]:
-                sync_fully_kiosk_devices(
-                    opts, api, monitors, default_notification_ids, state
-                )
-
-            if opts["discover_homematic_ip_infrastructure"]:
-                sync_homematic_ip_infrastructure(
-                    opts, api, monitors, default_notification_ids, state
-                )
-
-            if opts["discover_matter_devices"]:
-                sync_matter_devices(
-                    opts, api, monitors, default_notification_ids, state
-                )
-
-            if opts["discover_e3dc_devices"]:
-                sync_e3dc_devices(
-                    opts, api, monitors, default_notification_ids, state
-                )
-
-            if opts["discover_overkiz_devices"]:
-                sync_overkiz_devices(
-                    opts, api, monitors, default_notification_ids, state
-                )
-
-            if opts["discover_hue_bridge"] or opts["discover_hue_devices"]:
-                sync_hue(
-                    opts, api, monitors, default_notification_ids, state
-                )
-
-            if opts["discover_smlight_devices"]:
-                sync_smlight_devices(
-                    opts, api, monitors, default_notification_ids, state
-                )
-
-            if opts["discover_stiebel_eltron"]:
-                sync_stiebel_eltron(
-                    opts, api, monitors, default_notification_ids, state
-                )
-
-            if opts["discover_synology_dsm"]:
-                sync_synology_dsm(
-                    opts, api, monitors, default_notification_ids, state
-                )
-
-            if opts["discover_esphome_devices"]:
-                sync_esphome_devices(
-                    opts, api, monitors, default_notification_ids, state
-                )
-
-            if opts["discover_zigbee2mqtt_devices"] or opts["discover_mqtt_devices"]:
-                sync_mqtt_devices(
-                    opts, api, monitors, default_notification_ids, state
-                )
-        finally:
-            HAWebSocket.end_cycle()
-
-    save_state(state)
+    try:
+        with UptimeKumaApi(
+            opts["kuma_url"], timeout=30, ssl_verify=opts["verify_ssl"],
+        ) as api:
+            api.login(opts["kuma_username"], opts["kuma_password"])
+            monitors = normalize_items(api.get_monitors())
+            default_notification_ids = get_default_notification_ids(api)
+            jobs = [
+                (opts["discover_addons"], sync_addons),
+                (opts["discover_shelly"], sync_shelly),
+                (opts["discover_unifi_network_devices"], sync_unifi_network_devices),
+                (opts["discover_fritz_network_devices"], sync_fritz_network_devices),
+                (opts["discover_fully_kiosk_devices"], sync_fully_kiosk_devices),
+                (opts["discover_homematic_ip_infrastructure"], sync_homematic_ip_infrastructure),
+                (opts["discover_matter_devices"], sync_matter_devices),
+                (opts["discover_e3dc_devices"], sync_e3dc_devices),
+                (opts["discover_overkiz_devices"], sync_overkiz_devices),
+                (opts["discover_hue_bridge"] or opts["discover_hue_devices"], sync_hue),
+                (opts["discover_smlight_devices"], sync_smlight_devices),
+                (opts["discover_stiebel_eltron"], sync_stiebel_eltron),
+                (opts["discover_synology_dsm"], sync_synology_dsm),
+                (opts["discover_esphome_devices"], sync_esphome_devices),
+                (opts["discover_zigbee2mqtt_devices"] or opts["discover_mqtt_devices"], sync_mqtt_devices),
+            ]
+            failed = []
+            completed = 0
+            HAWebSocket.begin_cycle()
+            try:
+                for enabled, sync in jobs:
+                    if not enabled:
+                        continue
+                    try:
+                        sync(opts, api, monitors, default_notification_ids, state)
+                        completed += 1
+                    except Exception as exc:
+                        failed.append(sync.__name__)
+                        # Request exceptions can contain secret Push URLs.
+                        LOG.error("Integration %s failed (%s); continuing with remaining integrations",
+                                  sync.__name__, type(exc).__name__)
+            finally:
+                HAWebSocket.end_cycle()
+            if failed:
+                LOG.warning("Sync partially completed: %d succeeded, %d failed: %s",
+                            completed, len(failed), ", ".join(failed))
+            else:
+                LOG.info("Sync completed: %d integration(s) succeeded", completed)
+    finally:
+        # Preserve successful Push timestamps and debounce counters on partial failure.
+        save_state(state)
 
 
-def main():
+def _run():
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
     )
-    LOG.info("Starting HA Kuma Discovery 1.5.1")
+    LOG.info("Starting HA Kuma Discovery 1.5.2")
 
     while True:
         started = time.monotonic()
@@ -3553,7 +3576,7 @@ def main():
         except KeyboardInterrupt:
             return
         except Exception as exc:
-            LOG.exception("Sync failed: %s", exc)
+            LOG.error("Sync failed (%s)", type(exc).__name__)
             try:
                 sync_interval = read_options().get("sync_interval", 60)
             except Exception:
@@ -3563,6 +3586,13 @@ def main():
         sleep_for = max(1, sync_interval - elapsed)
         LOG.info("Sync cycle took %.1fs; next cycle in %.1fs", elapsed, sleep_for)
         time.sleep(sleep_for)
+
+
+def main():
+    try:
+        _run()
+    finally:
+        HTTP.close()
 
 
 if __name__ == "__main__":

@@ -1,19 +1,10 @@
-# HA Kuma Discovery 1.5.1
+# HA Kuma Discovery 1.5.2
 
-Version 1.5.1 makes Push heartbeat delivery more robust.
+Automatic Home Assistant device discovery for Uptime Kuma.
 
-With the default configuration:
+Version 1.5.2 improves fault isolation, state recovery and HTTP connection reuse.
+The heartbeat timing and three-cycle DOWN debounce from 1.5.1 are preserved.
+Existing installations need no new configuration.
 
-```yaml
-sync_interval: 60
-heartbeat_interval: 180
-push_down_grace_cycles: 3
-```
-
-the add-on now refreshes unchanged Push monitors every sync cycle (about every
-60 seconds), while Uptime Kuma still keeps its 180-second heartbeat window.
-
-This gives substantially more headroom against delayed or occasionally missed
-sync cycles and avoids false `No heartbeat in the time window` alerts.
-
-The three-cycle DOWN debounce remains unchanged.
+See [documentation](DOCS.md) for setup, updates and troubleshooting, and
+[changelog](CHANGELOG.md) for version history.
