@@ -1,0 +1,159 @@
+name: "HA Kuma Discovery"
+version: "1.5.1"
+slug: "ha_kuma_discovery"
+description: "Discovers Home Assistant infrastructure and physical devices and mirrors them to Uptime Kuma."
+arch:
+  - aarch64
+  - amd64
+startup: application
+boot: auto
+init: false
+hassio_api: true
+hassio_role: manager
+homeassistant_api: true
+
+map:
+  - type: homeassistant_config
+    read_only: true
+
+options:
+  kuma_url: "http://homeassistant.local:3001"
+  kuma_username: ""
+  kuma_password: ""
+  verify_ssl: true
+
+  discover_addons: true
+  discover_shelly: true
+  discover_unifi_network_devices: true
+  discover_fritz_network_devices: true
+  discover_fully_kiosk_devices: true
+  discover_homematic_ip_infrastructure: true
+  discover_matter_devices: true
+  discover_e3dc_devices: true
+  discover_overkiz_devices: true
+  discover_hue_bridge: true
+  discover_hue_devices: false
+  discover_smlight_devices: true
+  discover_stiebel_eltron: true
+  discover_synology_dsm: true
+  discover_esphome_devices: true
+  discover_zigbee2mqtt_devices: true
+  discover_mqtt_devices: true
+
+  sync_interval: 60
+  heartbeat_interval: 180
+  shelly_ping_interval: 60
+  shelly_max_retries: 2
+  unifi_ping_interval: 60
+  unifi_max_retries: 2
+  fritz_ping_interval: 60
+  fritz_max_retries: 2
+  fully_kiosk_ping_interval: 60
+  fully_kiosk_max_retries: 2
+  homematic_ip_ping_interval: 60
+  homematic_ip_max_retries: 2
+  e3dc_ping_interval: 60
+  e3dc_max_retries: 2
+  overkiz_ping_interval: 60
+  overkiz_max_retries: 2
+  hue_ping_interval: 60
+  hue_max_retries: 2
+  smlight_ping_interval: 60
+  smlight_max_retries: 2
+  stiebel_eltron_ping_interval: 60
+  stiebel_eltron_max_retries: 2
+  synology_ping_interval: 60
+  synology_max_retries: 2
+  esphome_ping_interval: 60
+  esphome_max_retries: 2
+
+  monitor_prefix: "HA Add-on: "
+  shelly_monitor_prefix: "Shelly: "
+  unifi_monitor_prefix: "UniFi: "
+  fritz_monitor_prefix: "FRITZ!: "
+  fully_kiosk_monitor_prefix: "Fully Kiosk: "
+  homematic_ip_monitor_prefix: "Homematic IP: "
+  matter_monitor_prefix: "Matter: "
+  e3dc_monitor_prefix: "E3DC: "
+  overkiz_monitor_prefix: "Somfy: "
+  hue_monitor_prefix: "Hue: "
+  smlight_monitor_prefix: "SMLIGHT: "
+  stiebel_eltron_monitor_prefix: "Stiebel Eltron: "
+  synology_monitor_prefix: "Synology: "
+  esphome_monitor_prefix: "ESPHome: "
+  zigbee2mqtt_monitor_prefix: "Zigbee2MQTT: "
+  mqtt_monitor_prefix: "MQTT: "
+  push_down_grace_cycles: 3
+
+  ignore_slugs: "a0d7b954_uptime-kuma,a0d7b954_vscode,1f3d020e_hassos_ssh_configurator_addon,5a74cd62_psa_token_helper"
+
+schema:
+  kuma_url: str
+  kuma_username: str
+  kuma_password: str
+  verify_ssl: bool
+
+  discover_addons: bool
+  discover_shelly: bool
+  discover_unifi_network_devices: bool
+  discover_fritz_network_devices: bool
+  discover_fully_kiosk_devices: bool
+  discover_homematic_ip_infrastructure: bool
+  discover_matter_devices: bool
+  discover_e3dc_devices: bool
+  discover_overkiz_devices: bool
+  discover_hue_bridge: bool
+  discover_hue_devices: bool
+  discover_smlight_devices: bool
+  discover_stiebel_eltron: bool
+  discover_synology_dsm: bool
+  discover_esphome_devices: bool
+  discover_zigbee2mqtt_devices: bool
+  discover_mqtt_devices: bool
+
+  sync_interval: int
+  heartbeat_interval: int
+  shelly_ping_interval: int
+  shelly_max_retries: int
+  unifi_ping_interval: int
+  unifi_max_retries: int
+  fritz_ping_interval: int
+  fritz_max_retries: int
+  fully_kiosk_ping_interval: int
+  fully_kiosk_max_retries: int
+  homematic_ip_ping_interval: int
+  homematic_ip_max_retries: int
+  e3dc_ping_interval: int
+  e3dc_max_retries: int
+  overkiz_ping_interval: int
+  overkiz_max_retries: int
+  hue_ping_interval: int
+  hue_max_retries: int
+  smlight_ping_interval: int
+  smlight_max_retries: int
+  stiebel_eltron_ping_interval: int
+  stiebel_eltron_max_retries: int
+  synology_ping_interval: int
+  synology_max_retries: int
+  esphome_ping_interval: int
+  esphome_max_retries: int
+
+  monitor_prefix: str
+  shelly_monitor_prefix: str
+  unifi_monitor_prefix: str
+  fritz_monitor_prefix: str
+  fully_kiosk_monitor_prefix: str
+  homematic_ip_monitor_prefix: str
+  matter_monitor_prefix: str
+  e3dc_monitor_prefix: str
+  overkiz_monitor_prefix: str
+  hue_monitor_prefix: str
+  smlight_monitor_prefix: str
+  stiebel_eltron_monitor_prefix: str
+  synology_monitor_prefix: str
+  esphome_monitor_prefix: str
+  zigbee2mqtt_monitor_prefix: str
+  mqtt_monitor_prefix: str
+  push_down_grace_cycles: int
+
+  ignore_slugs: str
