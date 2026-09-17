@@ -1,0 +1,37 @@
+name: Validate
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile Python
+        run: python -m py_compile ha_kuma_discovery/app.py
+      - name: Check startup script
+        run: bash -n ha_kuma_discovery/run.sh
+      - name: Install YAML parser
+        run: python -m pip install PyYAML==6.0.2
+      - name: Validate metadata
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+          repo = yaml.safe_load(Path('repository.yaml').read_text())
+          config = yaml.safe_load(Path('ha_kuma_discovery/config.yaml').read_text())
+          assert repo['name']
+          assert config['slug'] == 'ha_kuma_discovery'
+          assert isinstance(config['version'], str)
+          assert set(config['arch']) == {'amd64', 'aarch64'}
+          assert set(config['options']) == set(config['schema'])
+          assert not config['options']['kuma_username']
+          assert not config['options']['kuma_password']
+          print('Repository and add-on metadata OK')
+          PY
