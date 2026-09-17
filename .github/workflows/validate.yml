@@ -17,8 +17,10 @@ jobs:
         run: python -m py_compile ha_kuma_discovery/app.py
       - name: Check startup script
         run: bash -n ha_kuma_discovery/run.sh
-      - name: Install YAML parser
-        run: python -m pip install PyYAML==6.0.2
+      - name: Install test dependencies
+        run: python -m pip install PyYAML==6.0.2 requests==2.32.5 websocket-client==1.8.0 uptime-kuma-api-ng==1.10.0
+      - name: Behavior tests
+        run: python -m unittest discover -s . -p 'test_*.py' -v
       - name: Validate metadata
         run: |
           python - <<'PY'

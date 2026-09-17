@@ -2,7 +2,7 @@
 
 Home Assistant devices and infrastructure mirrored to Uptime Kuma.
 
-Initial version: **1.5.1**, imported from the existing add-on archive. Supports amd64 and aarch64.
+Current version: **1.5.2**. Based on the original 1.5.1 add-on. Supports amd64 and aarch64.
 
 ## Installation
 
@@ -20,15 +20,15 @@ Install **HA Kuma Discovery**, set `kuma_url`, `kuma_username` and `kuma_passwor
 
 Keep a backup of the existing add-on configuration and data. A repository installation has a different add-on identity from a local installation; settings and `/data/state.json` are not migrated automatically. Stop the local copy before starting the repository copy, and verify the resulting Kuma monitors before removing the old installation.
 
-## Version 1.5.1
+## Version 1.5.2
 
 With the default settings, unchanged Push monitors receive a heartbeat about every 60 seconds. Kuma retains its 180-second heartbeat window and DOWN requires three consecutive unavailable cycles. Recovery is reported immediately.
 
-The original application, configuration, Dockerfile, startup script and changelog are preserved from the supplied 1.5.1 archive.
+Version 1.5.2 isolates integration failures, saves state atomically with backup recovery, and reuses HTTP connections. Existing configuration and state remain compatible. See the changelog for details.
 
 - [Configuration and operation](ha_kuma_discovery/DOCS.md)
 - [Changelog](ha_kuma_discovery/CHANGELOG.md)
 
 ## Validation
 
-GitHub Actions checks Python compilation, shell syntax and YAML parsing on pushes and pull requests. These checks do not replace testing inside Home Assistant with a running Uptime Kuma instance.
+GitHub Actions runs 19 behavior tests plus Python compilation, shell syntax and YAML metadata checks on pushes and pull requests. These checks do not replace testing inside Home Assistant with a running Uptime Kuma instance.

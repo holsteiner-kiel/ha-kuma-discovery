@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.5.2
+
+### Fixed
+- A failed integration no longer skips the remaining enabled integrations.
+- Successful Push timestamps and debounce counters are saved even after partial failures.
+- Broken Home Assistant WebSocket transports are reopened for the next integration.
+- State writes use a flushed temporary file and atomic replacement. The previous
+  valid state is kept in `/data/state.json.bak` and recovered if the primary is missing
+  or unreadable. Invalid primary files never overwrite a valid backup.
+
+### Improved
+- Supervisor requests and Kuma Push requests reuse HTTP connections through a
+  shared session; authorization headers remain local to each request.
+- Partial failures identify the integration and exception type without logging
+  exception text that may contain secret Push URLs.
+- Added 19 automated behavior tests, including real HTTP keep-alive verification.
+
+### Compatibility
+- Existing configuration and state format are retained; no new settings required.
+- Default 60-second sync, 180-second heartbeat window and three-cycle DOWN
+  debounce are unchanged. A failed integration remains subject to Kuma's normal
+  heartbeat timeout; the add-on does not invent healthy status for missing data.
+
 ## 1.5.1
 
 ### Fixed
@@ -401,7 +424,7 @@ The app now uses `U6-Pro-OG`.
 - Added a clear log message when **Track network devices** is not enabled in the Home Assistant UniFi Network integration.
 
 ### Required Home Assistant setting
-In **Settings → Devices & services → UniFi Network → Configure**, enable:
+In **Settings â†’ Devices & services â†’ UniFi Network â†’ Configure**, enable:
 
 **Track network devices**
 
