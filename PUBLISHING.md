@@ -20,9 +20,9 @@ The separate existing `Validate` workflow remains unchanged.
 
 ## Initial rollout
 
-The reviewed **2.0.0** images are published from `release/2.0.0` before the image
-reference reaches the default branch. The exact branch/version bootstrap is removed
-after verification. All three GHCR packages must remain public:
+The reviewed **2.0.0** images were published from `release/2.0.0` before the image
+reference reached the default branch. The temporary branch/version bootstrap was
+removed after verification. All three GHCR packages are public:
 
 - `amd64-ha-kuma-discovery`
 - `aarch64-ha-kuma-discovery`

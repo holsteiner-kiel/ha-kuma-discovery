@@ -24,11 +24,8 @@ class ImageMetadataTests(unittest.TestCase):
         self.assertTrue(self.check('workflow_dispatch', request_publish='true')[1])
         self.assertFalse(self.check('workflow_dispatch', ref='refs/heads/other', request_publish='true')[1])
 
-    def test_release_branch_bootstrap_is_exact_and_temporary(self):
+    def test_branch_pushes_cannot_publish(self):
         self.assertFalse(self.check('push')[1])
-        self.assertTrue(self.check('push', ref='refs/heads/release/2.0.0')[1])
-        self.assertFalse(self.check('push', ref='refs/heads/release/other')[1])
-        self.config['version'] = '2.0.1'
         self.assertFalse(self.check('push', ref='refs/heads/release/2.0.0')[1])
 
     def test_invalid_metadata_fails_closed(self):
