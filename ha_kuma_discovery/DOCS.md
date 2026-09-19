@@ -59,3 +59,28 @@ requests. Error summaries omit exception text to avoid exposing secret Push URLs
 
 Version 1.5.2 has automated regression tests. A live HA installation test remains
 necessary after updating; the test suite does not replace that check.
+
+## AirGradient (next release)
+
+Native Home Assistant AirGradient devices receive one Ping monitor each using
+the integration's explicit `data.host` (read from HA storage when the WebSocket
+entry omits it). The physical device's HA name is used with `AirGradient: `.
+Without a name, the entry title and native serial identify the device; duplicate
+names are serial-qualified. No address is derived from entity names or guessed.
+Missing/invalid hosts are skipped with an informational message. An absent
+integration or empty device registry is a normal no-op, even when enabled.
+
+```yaml
+discover_airgradient_devices: true
+airgradient_ping_interval: 60
+airgradient_max_retries: 2
+airgradient_monitor_prefix: "AirGradient: "
+```
+
+Existing same-name Ping monitors are reused and their hosts updated when HA
+changes the address. Default notification assignment follows the other Ping
+integrations. As elsewhere, renaming a device can leave an old monitor for manual
+review; the app does not delete monitors. Keep user-assigned device names unique.
+
+Sources: [native entry host](https://github.com/home-assistant/core/blob/dev/homeassistant/components/airgradient/config_flow.py)
+and [physical registry identifiers](https://github.com/home-assistant/core/blob/dev/homeassistant/components/airgradient/entity.py).
