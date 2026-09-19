@@ -24,7 +24,8 @@ heartbeat_interval: 180
 push_down_grace_cycles: 3
 ```
 
-Unchanged Push monitors are refreshed about every 60 seconds. Kuma keeps its
+Every successfully evaluated Push monitor sends its current state each sync
+cycle, including unchanged states; there is no elapsed-time refresh gate. Kuma keeps its
 180-second heartbeat window. State-based Push devices report DOWN after three
 consecutive unavailable observations and recover immediately when observed UP.
 Ping-based monitors retain their existing behavior.
@@ -59,3 +60,18 @@ requests. Error summaries omit exception text to avoid exposing secret Push URLs
 
 Version 1.5.2 has automated regression tests. A live HA installation test remains
 necessary after updating; the test suite does not replace that check.
+
+## Push reliability and Kuma diagnostics (next release)
+
+The default 60-second sync and 180-second heartbeat window are unchanged.
+With typical 8–13-second successful cycles, one missed cycle leaves headroom;
+repeated failures or very long cycles can still exceed Kuma's window.
+An integration failure does not generate substitute UP heartbeats. Successful
+heartbeats already sent in a partially failed cycle remain saved; a failed Push
+request never advances its saved timestamp or reported state. DOWN observations
+still use the existing three-cycle grace and UP recovery remains immediate.
+
+`Kuma operation failed: ... (ExceptionType)` identifies session opening, login,
+monitor/notification fetching, monitor creation/update or the Push HTTP call.
+These messages deliberately omit exception text, request URLs and credentials.
+The ordinary integration/global failure summary follows the stage diagnostic.
