@@ -64,7 +64,7 @@ necessary after updating; the test suite does not replace that check.
 ## Push reliability and Kuma diagnostics (next release)
 
 The default 60-second sync and 180-second heartbeat window are unchanged.
-With typical 8–13-second successful cycles, one missed cycle leaves headroom;
+With typical 8-13-second successful cycles, one missed cycle leaves headroom;
 repeated failures or very long cycles can still exceed Kuma's window.
 An integration failure does not generate substitute UP heartbeats. Successful
 heartbeats already sent in a partially failed cycle remain saved; a failed Push
@@ -106,3 +106,4 @@ they do not create monitors or report a failed integration. Empty host lookups
 also avoid touching HA config-entry storage or warning about a missing mount.
 Malformed responses and API failures still follow integration fault isolation;
 they are not silently interpreted as an absent integration.
+
