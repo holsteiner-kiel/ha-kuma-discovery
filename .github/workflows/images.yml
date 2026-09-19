@@ -4,10 +4,6 @@ on:
   pull_request:
   release:
     types: [published]
-  # Bootstrap the existing version before the image reference reaches main.
-  # Remove this trigger after the initial GHCR rollout is complete.
-  push:
-    branches: [ci/prebuilt-ghcr-images]
   workflow_dispatch:
     inputs:
       publish:
