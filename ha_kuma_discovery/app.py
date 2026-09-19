@@ -993,6 +993,8 @@ def _unifi_config_entry_hosts_from_storage(
     and reads only data.host for matching UniFi entries.
     """
     hosts: Dict[str, str] = {}
+    if not allowed_entry_ids:
+        return hosts
 
     if not HA_CONFIG_ENTRIES.exists():
         LOG.warning(
@@ -1281,6 +1283,8 @@ def _config_entry_hosts_from_storage(
 ) -> Dict[str, str]:
     """Return config-entry data.host values for a specific HA integration."""
     hosts: Dict[str, str] = {}
+    if not allowed_entry_ids:
+        return hosts
 
     if not HA_CONFIG_ENTRIES.exists():
         LOG.warning(

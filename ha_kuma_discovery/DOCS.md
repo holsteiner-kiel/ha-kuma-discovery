@@ -98,3 +98,12 @@ Sources: [HCU binary sensor semantics](https://github.com/Ediminator/homematicip
 [registry metadata](https://github.com/Ediminator/homematicip-hcu/blob/main/custom_components/hcu_integration/entity.py)
 and [physical model prefixes](https://github.com/Ediminator/homematicip-hcu/blob/main/custom_components/hcu_integration/const.py).
 
+## Optional integrations
+
+Discovery options may remain enabled when their HA integrations are not installed.
+Empty entry/device/entity lists are normal where no supported source exists;
+they do not create monitors or report a failed integration. Empty host lookups
+also avoid touching HA config-entry storage or warning about a missing mount.
+Malformed responses and API failures still follow integration fault isolation;
+they are not silently interpreted as an absent integration.
+
