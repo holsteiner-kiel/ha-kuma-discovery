@@ -1,5 +1,30 @@
 # Changelog
 
+## 2.0.0
+
+### Changed
+- Home Assistant now downloads signed, immutable, versioned amd64/aarch64 images
+  from `ghcr.io/holsteiner-kiel/ha-kuma-discovery` instead of building the app
+  container and Python dependencies locally.
+- Container publication validates the app, builds both architectures natively,
+  signs the architecture images and publishes a generic multi-architecture manifest.
+- The container base is pinned to the supported Home Assistant Alpine 3.24 line
+  instead of an unbounded `latest` base.
+
+### Added
+- Discover each physical native AirGradient device as one Ping monitor named
+  `AirGradient: <Home Assistant device name>`.
+- Read the AirGradient address from its explicit Home Assistant config-entry host;
+  never derive or guess an address from entity names. Missing hosts are skipped.
+- Reuse existing AirGradient monitors and update their host when Home Assistant's
+  config entry changes it.
+
+### Compatibility
+- Existing configuration, monitor names, state persistence, notification assignment
+  and monitoring behavior from 1.6.0 remain compatible.
+- AirGradient discovery is a clean no-op when the integration is not installed.
+- No mutable `latest` image tag is required and stale monitors are not deleted.
+
 ## 1.6.0
 
 ### Added
