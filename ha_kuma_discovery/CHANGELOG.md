@@ -1,10 +1,35 @@
 # Changelog
 
-## Unreleased — repository presentation
+## 1.6.0
 
+### Added
+- Discover physical Homematic IP Local/HCU devices through enabled native
+  Connectivity entities and create one Push monitor per physical device.
+- Keep the HCU itself as the only Ping-based Homematic IP monitor; HAP access
+  points now use the same Connectivity-based Push path as other physical devices.
 - Add the MIT license, project URL and supplied icon/logo artwork.
+
+### Fixed
+- Send the current state for every successfully evaluated managed Push monitor
+  during every sync cycle, removing the elapsed-time refresh edge case that could
+  lead to `No heartbeat in the time window` after a missed cycle.
+- Preserve immediate state changes, three-cycle DOWN debounce and immediate UP
+  recovery without fabricating heartbeats for failed integrations.
+- Treat an enabled discovery option with no installed matching Home Assistant
+  integration as a normal no-op while still surfacing malformed data and API errors.
+
+### Improved
+- Identify whether Kuma failures occurred while opening the API session, logging
+  in, fetching monitors/notifications, changing a monitor or sending a Push call.
+  Logs continue to omit passwords, tokens, Push URLs and exception payloads.
 - Replace installation-specific documentation examples with neutral examples.
-- No monitoring behavior or configuration defaults changed.
+- Expand automated behavior coverage from 19 to 41 tests.
+
+### Compatibility
+- Existing configuration, monitor prefixes, notification assignment, persisted
+  state and backup recovery remain compatible; no new settings are required.
+- Default 60-second sync, 180-second heartbeat window and three-cycle DOWN grace
+  are unchanged. Existing monitors are reused and stale monitors are not deleted.
 
 ## 1.5.2
 

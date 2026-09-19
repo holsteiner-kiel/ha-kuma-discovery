@@ -1,5 +1,5 @@
 name: "HA Kuma Discovery"
-version: "1.5.2"
+version: "1.6.0"
 slug: "ha_kuma_discovery"
 url: "https://github.com/holsteiner-kiel/ha-kuma-discovery"
 description: "Discovers Home Assistant infrastructure and physical devices and mirrors them to Uptime Kuma."
