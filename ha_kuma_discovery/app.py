@@ -1574,13 +1574,7 @@ def discover_fully_kiosk_devices() -> list[Dict[str, str]]:
 
 
 def discover_homematic_ip_infrastructure() -> Dict[str, Any]:
-    """
-    Discover only Homematic IP infrastructure from the HCU integration itself.
-
-    No dependency on UniFi, FRITZ!Box or any other network integration:
-      - HCU: management IP from hcu_integration config-entry data.host
-      - HmIP-HAP: reachability from its hcu_integration connectivity binary_sensor
-    """
+    """Discover the HCU Ping target and native physical Connectivity devices."""
     with HAWebSocket() as ha:
         entries = ha.call({"type": "config_entries/get", "domain": "hcu_integration"}) or []
         devices = ha.call({"type": "config/device_registry/list"}) or []
@@ -1606,14 +1600,15 @@ def discover_homematic_ip_infrastructure() -> Dict[str, Any]:
     entities_by_device: Dict[str, list[Dict[str, Any]]] = {}
     for entity in entities:
         eid = str(entity.get("config_entry_id") or "")
-        if eid not in entry_ids:
+        if eid not in entry_ids or entity.get("platform") != "hcu_integration":
             continue
         did = str(entity.get("device_id") or "")
         if did:
             entities_by_device.setdefault(did, []).append(entity)
 
     hcu = None
-    access_points = []
+    connectivity_devices = []
+    seen_devices = set()
 
     for device in devices:
         eid = str(device.get("config_entry_id") or "")
@@ -1629,7 +1624,13 @@ def discover_homematic_ip_infrastructure() -> Dict[str, Any]:
         did = str(device.get("id") or "")
         name = str(device.get("name_by_user") or device.get("name") or model).strip()
 
-        if model == "HmIP-HCU1":
+        if not did or did in seen_devices or device.get("disabled_by") is not None:
+            continue
+        if not _device_has_identifier(device, "hcu_integration"):
+            continue
+        seen_devices.add(did)
+
+        if model in {"HmIP-HCU1", "HmIP-HCU-1", "HmIP-HCU1-A"}:
             host = None
             source_entry = None
             for candidate_eid in matching:
@@ -1649,38 +1650,49 @@ def discover_homematic_ip_infrastructure() -> Dict[str, Any]:
             else:
                 LOG.warning("Homematic IP HCU '%s' has no usable local host", name)
 
-        elif model == "HmIP-HAP":
-            connectivity = None
+        else:
+            # HCU physical models and native registry identifiers are positive
+            # evidence of hardware. Groups/services and virtual models are not.
+            if device.get("entry_type") is not None:
+                continue
+            if not model.lower().startswith(("hmip-", "hmipw-", "hm-", "alpha-", "elv")):
+                continue
+            if any(word in model.lower() for word in ("virtual", "logical", "group", "room", "helper")):
+                continue
+
+            candidates = []
             for entity in entities_by_device.get(did, []):
                 entity_id = str(entity.get("entity_id") or "")
-                if not entity_id.startswith("binary_sensor."):
+                if entity.get("disabled_by") is not None or not entity_id.startswith("binary_sensor."):
                     continue
-
-                original_name = str(entity.get("original_name") or "").strip().lower()
+                current = state_by_entity.get(entity_id) or {}
+                attributes = current.get("attributes") or {}
+                if attributes.get("is_group"):
+                    continue
                 unique_id = str(entity.get("unique_id") or "").lower()
+                native_unreach = unique_id.endswith("_unreach")
+                device_class = (entity.get("original_device_class")
+                                or attributes.get("device_class"))
+                if native_unreach or device_class == "connectivity":
+                    candidates.append((not native_unreach, unique_id, entity_id, current))
 
-                if original_name == "connectivity" or unique_id.endswith("_unreach"):
-                    connectivity = entity_id
-                    break
-
-            if connectivity:
-                current = state_by_entity.get(connectivity) or {}
-                access_points.append({
-                    "device_id": did,
-                    "name": name or "Access Point",
-                    "model": model,
-                    "connectivity_entity": connectivity,
-                    "state": str(current.get("state") or "unknown").lower(),
-                })
-            else:
-                LOG.warning(
-                    "Homematic IP Access Point '%s' has no connectivity entity; skipping.",
-                    name,
-                )
+            if not candidates:
+                LOG.info("Skipping Homematic IP device '%s': no enabled Connectivity entity", name)
+                continue
+            # Prefer the integration's native unreach feature; select exactly
+            # one deterministically even if multiple channel entities exist.
+            _, _, connectivity, current = min(candidates, key=lambda item: item[:3])
+            connectivity_devices.append({
+                "device_id": did,
+                "name": name or model,
+                "model": model,
+                "connectivity_entity": connectivity,
+                "state": str(current.get("state") or "unknown").lower(),
+            })
 
     return {
         "hcu": hcu,
-        "access_points": access_points,
+        "devices": connectivity_devices,
     }
 
 
@@ -3343,9 +3355,9 @@ def sync_homematic_ip_infrastructure(opts, api, monitors, default_notification_i
             hcu["source"],
         )
 
-    aps = infra.get("access_points") or []
-    for ap in aps:
-        monitor_name = f'{prefix}{ap["name"]}'
+    devices = infra.get("devices") or []
+    for device in devices:
+        monitor_name = f'{prefix}{device["name"]}'
         monitor = ensure_push_monitor(
             api,
             monitors,
@@ -3359,17 +3371,17 @@ def sync_homematic_ip_infrastructure(opts, api, monitors, default_notification_i
         #   off = disconnected/unreachable
         # Unknown/unavailable is treated as DOWN because the integration itself
         # cannot currently confirm reachability.
-        ha_state = ap["state"]
+        ha_state = device["state"]
         up = ha_state == "on"
 
         effective_up, down_cycles = _push_effective_up(
             state,
             "homematic_ip",
-            ap["device_id"],
+            device["device_id"],
             up,
             opts["push_down_grace_cycles"],
         )
-        message = f'HA {ap["connectivity_entity"]}: {ha_state}'
+        message = f'HA {device["connectivity_entity"]}: {ha_state}'
         if not up and effective_up:
             message += f' | DOWN grace {down_cycles}/{opts["push_down_grace_cycles"]}'
 
@@ -3387,23 +3399,27 @@ def sync_homematic_ip_infrastructure(opts, api, monitors, default_notification_i
             "%s -> %s via %s (observed=%s, down_grace=%d/%d, HA state=%s)",
             monitor_name,
             "UP" if effective_up else "DOWN",
-            ap["connectivity_entity"],
+            device["connectivity_entity"],
             "UP" if up else "DOWN",
             down_cycles,
             opts["push_down_grace_cycles"],
             ha_state,
         )
 
+    records = {
+        device["device_id"]: {
+            "name": device["name"],
+            "model": device["model"],
+            "connectivity_entity": device["connectivity_entity"],
+        }
+        for device in devices
+    }
     state["homematic_ip"] = {
         "hcu": hcu or {},
-        "access_points": {
-            ap["device_id"]: {
-                "name": ap["name"],
-                "model": ap["model"],
-                "connectivity_entity": ap["connectivity_entity"],
-            }
-            for ap in aps
-        },
+        "devices": records,
+        # Keep the existing HAP inventory key for persisted-state compatibility.
+        "access_points": {did: item for did, item in records.items()
+                          if item["model"] == "HmIP-HAP"},
     }
 
 
@@ -3611,3 +3627,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

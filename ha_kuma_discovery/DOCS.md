@@ -64,7 +64,7 @@ necessary after updating; the test suite does not replace that check.
 ## Push reliability and Kuma diagnostics (next release)
 
 The default 60-second sync and 180-second heartbeat window are unchanged.
-With typical 8–13-second successful cycles, one missed cycle leaves headroom;
+With typical 8-13-second successful cycles, one missed cycle leaves headroom;
 repeated failures or very long cycles can still exceed Kuma's window.
 An integration failure does not generate substitute UP heartbeats. Successful
 heartbeats already sent in a partially failed cycle remain saved; a failed Push
@@ -75,3 +75,26 @@ still use the existing three-cycle grace and UP recovery remains immediate.
 monitor/notification fetching, monitor creation/update or the Push HTTP call.
 These messages deliberately omit exception text, request URLs and credentials.
 The ordinary integration/global failure summary follows the stage diagnostic.
+
+## Homematic IP physical devices (next release)
+
+`discover_homematic_ip_infrastructure` retains its existing name and now covers
+physical HCU integration devices with an enabled native Connectivity binary
+sensor. Enable that entity in Home Assistant if you want the device monitored.
+The HCU remains `Homematic IP: HCU` via Ping. HAP access points and physical child
+devices use one `Homematic IP: <HA device name>` Push monitor each.
+Existing HAP monitor names and the debounce state are reused. No monitor is
+automatically deleted, and there is no separate HAP discovery path.
+
+Native `unreach` entities are preferred; native Connectivity device-class metadata
+is the fallback. HA `on` means connected; `off`, `unavailable`, `unknown` or a
+missing live state count as DOWN observations. The shared three-observation grace
+and immediate UP recovery apply. Disabled entities/devices, service entries,
+virtual/logical devices, groups, rooms and helpers are excluded. Hardware model
+prefixes follow the upstream integration; unrecognized models are skipped.
+Keep HA device names unique, as the existing Kuma lookup is name-based.
+
+Sources: [HCU binary sensor semantics](https://github.com/Ediminator/homematicip-hcu/blob/main/custom_components/hcu_integration/binary_sensor.py),
+[registry metadata](https://github.com/Ediminator/homematicip-hcu/blob/main/custom_components/hcu_integration/entity.py)
+and [physical model prefixes](https://github.com/Ediminator/homematicip-hcu/blob/main/custom_components/hcu_integration/const.py).
+
