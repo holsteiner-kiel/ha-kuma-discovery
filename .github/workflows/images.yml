@@ -1,0 +1,134 @@
+name: Container images
+
+on:
+  pull_request:
+  release:
+    types: [published]
+  # One-time 2.0.0 bootstrap. Remove after the reviewed images are public.
+  push:
+    branches: [release/2.0.0]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the checked-out app version (never overwrite a tag)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: images-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'publish' }}
+  cancel-in-progress: false
+
+env:
+  ARCHITECTURES: '["amd64", "aarch64"]'
+  IMAGE_NAME: ha-kuma-discovery
+
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+      version: ${{ steps.version.outputs.version }}
+      publish: ${{ steps.version.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Validate workflow syntax with actionlint
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release download v1.7.12 --repo rhysd/actionlint --pattern actionlint_1.7.12_linux_amd64.tar.gz --pattern actionlint_1.7.12_checksums.txt
+          sha256sum --ignore-missing -c actionlint_1.7.12_checksums.txt
+          tar -xzf actionlint_1.7.12_linux_amd64.tar.gz actionlint
+          ./actionlint .github/workflows/*.yml
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install validation dependencies
+        run: python -m pip install PyYAML==6.0.2 requests==2.32.5 websocket-client==1.8.0 uptime-kuma-api-ng==1.10.0
+      - name: Validate app before building or publishing
+        run: |
+          python -m py_compile ha_kuma_discovery/app.py
+          bash -n ha_kuma_discovery/run.sh
+          python -m unittest discover -s . -p 'test_*.py' -v
+      - name: Verify version and publication event
+        id: version
+        env:
+          EVENT: ${{ github.event_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          REQUEST_PUBLISH: ${{ inputs.publish }}
+        run: python image_metadata.py
+      - name: Native architecture matrix
+        id: matrix
+        uses: home-assistant/builder/actions/prepare-multi-arch-matrix@2026.09.0
+        with:
+          architectures: ${{ env.ARCHITECTURES }}
+          image-name: ${{ env.IMAGE_NAME }}
+          registry-prefix: ghcr.io/holsteiner-kiel
+
+  build:
+    needs: prepare
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build native image
+        uses: home-assistant/builder/actions/build-image@2026.09.0
+        with:
+          arch: ${{ matrix.arch }}
+          image: ${{ matrix.image }}
+          context: ha_kuma_discovery
+          version: ${{ needs.prepare.outputs.version }}
+          image-tags: ${{ needs.prepare.outputs.version }}
+          skip-existing: ${{ needs.prepare.outputs.version }}
+          cache-image-tag: ${{ needs.prepare.outputs.version }}
+          push: ${{ needs.prepare.outputs.publish }}
+          cosign: ${{ needs.prepare.outputs.publish }}
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+          labels: |
+            io.hass.type=app
+            org.opencontainers.image.revision=${{ github.sha }}
+      - name: Verify anonymous pull, runtime imports and HA labels
+        if: needs.prepare.outputs.publish == 'true'
+        env:
+          IMAGE: ${{ matrix.image }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          docker logout ghcr.io
+          docker pull "${IMAGE}:${VERSION}"
+          test "$(docker image inspect "${IMAGE}:${VERSION}" --format '{{index .Config.Labels "io.hass.arch"}}')" = "${ARCH}"
+          test "$(docker image inspect "${IMAGE}:${VERSION}" --format '{{index .Config.Labels "io.hass.version"}}')" = "${VERSION}"
+          docker run --rm --entrypoint python3 "${IMAGE}:${VERSION}" -c 'import requests, websocket; from uptime_kuma_api import UptimeKumaApi; compile(open("/app.py").read(), "/app.py", "exec")'
+
+  manifest:
+    needs: [prepare, build]
+    if: needs.prepare.outputs.publish == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      packages: write
+      id-token: write
+    steps:
+      - name: Publish versioned multi-architecture manifest
+        uses: home-assistant/builder/actions/publish-multi-arch-manifest@2026.09.0
+        with:
+          architectures: ${{ env.ARCHITECTURES }}
+          image-name: ${{ env.IMAGE_NAME }}
+          registry-prefix: ghcr.io/holsteiner-kiel
+          image-tags: ${{ needs.prepare.outputs.version }}
+          skip-existing: ${{ needs.prepare.outputs.version }}
+          container-registry-password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify published platforms
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          docker logout ghcr.io
+          docker buildx imagetools inspect "ghcr.io/holsteiner-kiel/ha-kuma-discovery:${VERSION}" --raw > manifest.json
+          jq -e '[.manifests[].platform | select(.os == "linux") | .architecture] | sort == ["amd64", "arm64"]' manifest.json
