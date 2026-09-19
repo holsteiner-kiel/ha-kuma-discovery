@@ -18,23 +18,20 @@ Pull requests build both architectures without pushing. App tests, Python
 compilation, startup shell syntax and metadata validation run before building.
 The separate existing `Validate` workflow remains unchanged.
 
-## Initial rollout — before merging the image reference
+## Initial rollout
 
-Pushing the dedicated `ci/prebuilt-ghcr-images` branch bootstraps **1.5.2**
-after validation, using its unchanged application code. This narrowly scoped
-trigger permits publishing before the workflow exists on the default branch.
-Verify the two builds and manifest check are green before merging this PR.
-Make the three GHCR packages public if they are initially private:
+The reviewed **1.5.2** images were published from this branch before the image
+reference reaches the default branch. All three GHCR packages are public:
 
 - `amd64-ha-kuma-discovery`
 - `aarch64-ha-kuma-discovery`
 - `ha-kuma-discovery`
 
-Verify an unauthenticated pull on both architectures. A public GitHub repository
-does not guarantee that a newly created GHCR package is public. Do not merge the
-config `image` reference until its version can be downloaded by Home Assistant.
-Remove the bootstrap push trigger after rollout. This PR does not bump the
-application version; independent feature PRs consolidate their version at release.
+The workflow successfully verified anonymous pulls, HA architecture/version
+labels, application runtime imports and the generic multi-architecture manifest.
+A public GitHub repository does not automatically make new GHCR packages public,
+so repeat these checks whenever a new package is introduced. This PR does not bump
+the application version; independent feature PRs consolidate their version at release.
 
 ## Later releases
 

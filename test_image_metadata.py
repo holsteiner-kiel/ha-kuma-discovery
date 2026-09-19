@@ -24,10 +24,8 @@ class ImageMetadataTests(unittest.TestCase):
         self.assertTrue(self.check('workflow_dispatch', request_publish='true')[1])
         self.assertFalse(self.check('workflow_dispatch', ref='refs/heads/other', request_publish='true')[1])
 
-    def test_bootstrap_only_for_existing_version_and_dedicated_branch(self):
-        self.assertTrue(self.check('push', ref='refs/heads/ci/prebuilt-ghcr-images')[1])
+    def test_branch_pushes_cannot_publish(self):
         self.assertFalse(self.check('push')[1])
-        self.config['version'] = '1.6.0'
         self.assertFalse(self.check('push', ref='refs/heads/ci/prebuilt-ghcr-images')[1])
 
     def test_invalid_metadata_fails_closed(self):

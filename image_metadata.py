@@ -18,9 +18,8 @@ def metadata(config, event, ref, repository, release_tag='', request_publish='fa
         raise ValueError('Unexpected image repository')
     if event == 'release' and release_tag not in (version, 'v' + version):
         raise ValueError('Release tag does not match config.yaml version')
-    bootstrap = event == 'push' and ref == 'refs/heads/ci/prebuilt-ghcr-images' and version == '1.5.2'
     manual = event == 'workflow_dispatch' and request_publish == 'true' and ref == 'refs/heads/main'
-    publish = repository == 'holsteiner-kiel/ha-kuma-discovery' and (bootstrap or manual or event == 'release')
+    publish = repository == 'holsteiner-kiel/ha-kuma-discovery' and (manual or event == 'release')
     return version, publish
 
 
