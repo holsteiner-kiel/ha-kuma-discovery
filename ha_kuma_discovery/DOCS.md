@@ -9,6 +9,9 @@ app/add-on store, install HA Kuma Discovery and configure `kuma_url`,
 `kuma_username` and `kuma_password`. Start the add-on and inspect its logs.
 Home Assistant Supervisor is required. Architectures: amd64 and aarch64.
 
+Installations download the prebuilt GHCR image matching the app version.
+Maintainers: see [container publishing and release preparation](../PUBLISHING.md).
+
 Existing repository installations can update from 1.5.1 through the store.
 Configuration and the state format remain compatible. Create a Home Assistant
 backup before updating. Only one discovery instance should run against the same
