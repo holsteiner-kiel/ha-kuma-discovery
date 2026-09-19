@@ -59,3 +59,12 @@ requests. Error summaries omit exception text to avoid exposing secret Push URLs
 
 Version 1.5.2 has automated regression tests. A live HA installation test remains
 necessary after updating; the test suite does not replace that check.
+
+## Optional integrations
+
+Discovery options may remain enabled when their HA integrations are not installed.
+Empty entry/device/entity lists are normal where no supported source exists;
+they do not create monitors or report a failed integration. Empty host lookups
+also avoid touching HA config-entry storage or warning about a missing mount.
+Malformed responses and API failures still follow integration fault isolation;
+they are not silently interpreted as an absent integration.
