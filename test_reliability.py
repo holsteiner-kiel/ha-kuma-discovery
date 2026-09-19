@@ -158,15 +158,15 @@ class HeartbeatTests(unittest.TestCase):
             return app.push_status_if_needed('http://example.invalid',
                 {'id': 1, 'name': 'device'}, up, 'status', True, state, 180, 60)
 
-    def test_refresh_deadline_and_immediate_status_change(self):
+    def test_every_cycle_and_immediate_status_change(self):
         state = {}
         with patch.object(app, 'push_status') as send:
             self.assertTrue(self.push(state, 1000))
-            self.assertFalse(self.push(state, 1059))
+            self.assertTrue(self.push(state, 1059))
             self.assertTrue(self.push(state, 1060))
             self.assertTrue(self.push(state, 1061, False))
             self.assertTrue(self.push(state, 1062, True))
-            self.assertEqual(send.call_count, 4)
+            self.assertEqual(send.call_count, 5)
 
     def test_failed_push_does_not_advance_success_timestamp(self):
         state = {'_push_status_cache': {'device': {'up': True, 'last_push': 1000}}}
