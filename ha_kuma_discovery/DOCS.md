@@ -64,7 +64,7 @@ necessary after updating; the test suite does not replace that check.
 ## Push reliability and Kuma diagnostics (next release)
 
 The default 60-second sync and 180-second heartbeat window are unchanged.
-With typical 8–13-second successful cycles, one missed cycle leaves headroom;
+With typical 8-13-second successful cycles, one missed cycle leaves headroom;
 repeated failures or very long cycles can still exceed Kuma's window.
 An integration failure does not generate substitute UP heartbeats. Successful
 heartbeats already sent in a partially failed cycle remain saved; a failed Push
@@ -97,3 +97,4 @@ Keep HA device names unique, as the existing Kuma lookup is name-based.
 Sources: [HCU binary sensor semantics](https://github.com/Ediminator/homematicip-hcu/blob/main/custom_components/hcu_integration/binary_sensor.py),
 [registry metadata](https://github.com/Ediminator/homematicip-hcu/blob/main/custom_components/hcu_integration/entity.py)
 and [physical model prefixes](https://github.com/Ediminator/homematicip-hcu/blob/main/custom_components/hcu_integration/const.py).
+

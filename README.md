@@ -1,5 +1,7 @@
 # HA Kuma Discovery
 
+![HA Kuma Discovery](ha_kuma_discovery/logo.png)
+
 Home Assistant devices and infrastructure mirrored to Uptime Kuma.
 
 Current version: **1.5.2**. Based on the original 1.5.1 add-on. Supports amd64 and aarch64.
@@ -32,3 +34,7 @@ Version 1.5.2 isolates integration failures, saves state atomically with backup 
 ## Validation
 
 GitHub Actions runs 19 behavior tests plus Python compilation, shell syntax and YAML metadata checks on pushes and pull requests. These checks do not replace testing inside Home Assistant with a running Uptime Kuma instance.
+
+## License
+
+Licensed under the [MIT License](LICENSE).

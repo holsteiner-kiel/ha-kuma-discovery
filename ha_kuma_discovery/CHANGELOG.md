@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — repository presentation
+
+- Add the MIT license, project URL and supplied icon/logo artwork.
+- Replace installation-specific documentation examples with neutral examples.
+- No monitoring behavior or configuration defaults changed.
+
 ## 1.5.2
 
 ### Fixed
@@ -82,12 +88,12 @@ reported after roughly three minutes instead of immediately.
   are monitored again.
 - Event-only fallback is restricted to physical Zigbee2MQTT devices.
 - Generic MQTT devices with only button/event entities remain excluded.
-- Zigbee2MQTT diagnostic-only devices such as the current `Router` remain excluded.
+- Zigbee2MQTT diagnostic-only devices with diagnostic-only entities remain excluded.
 
 ### Expected effect
-- `Zigbee2MQTT: CrealityK1switch` is included again.
-- `MQTT: rtl-haos-bridge (42)` remains skipped.
-- `Zigbee2MQTT: Router` remains skipped.
+- `Zigbee2MQTT: Example Remote` is included again.
+- `MQTT: Example Bridge` remains skipped.
+- `Zigbee2MQTT: Example Router` remains skipped.
 
 ## 1.4.1
 
@@ -100,8 +106,8 @@ reported after roughly three minutes instead of immediately.
   instead of being created as permanently false DOWN monitors.
 
 ### Expected effect
-- `MQTT: rtl-haos-bridge (42)` is skipped.
-- `Zigbee2MQTT: Router` is skipped with the current Home Assistant entity set.
+- `MQTT: Example Bridge` is skipped.
+- `Zigbee2MQTT: Example Router` is skipped when only diagnostic entities exist.
 
 ## 1.4.0
 
@@ -110,7 +116,7 @@ reported after roughly three minutes instead of immediately.
 - Zigbee2MQTT devices and other MQTT devices are separated into two monitor namespaces.
 - Physical Zigbee2MQTT devices are identified by IEEE-address MQTT identifiers (`zigbee2mqtt_0x...`).
 - Zigbee2MQTT Bridge and Group objects are excluded.
-- Generic MQTT devices such as `watermeter` and `Aquael Flow Heater BT` are supported.
+- Generic MQTT devices such as water meters and heating controllers are supported.
 - Devices with stateful entities use those entities for availability.
 - MQTT devices that only expose button/event-style entities use a safe fallback where only explicit `unavailable` means DOWN.
 - Existing cycle cache and Push-heartbeat throttling are reused, so the additional MQTT discovery does not re-download HA registries/states.
@@ -132,9 +138,6 @@ reported after roughly three minutes instead of immediately.
 - Default monitor prefix: `ESPHome: `.
 - Default monitoring method: Ping.
 
-### Current setup
-- 18 ESPHome config entries are discovered automatically.
-
 ## 1.2.0
 
 ### Added
@@ -145,8 +148,8 @@ reported after roughly three minutes instead of immediately.
 - Old/stale Synology DSM entries without a host are skipped.
 - Default monitor prefix: `Synology: `.
 
-### Current setup
-- `Synology: nas` -> Ping `192.168.178.10`
+### Example
+- `Synology: Example NAS` -> Ping `device.example`
 
 ## 1.1.0
 
@@ -158,8 +161,8 @@ reported after roughly three minutes instead of immediately.
 - Default monitor prefix: `Stiebel Eltron: `.
 - Default monitoring method: Ping.
 
-### Current setup
-- `Stiebel Eltron: LWZ` -> Ping `192.168.178.21`
+### Example
+- `Stiebel Eltron: Heat Pump` -> Ping `device.example`
 
 ## 1.0.1
 
@@ -226,7 +229,7 @@ reported after roughly three minutes instead of immediately.
 ### Fixed
 - The TaHoma Switch / Overkiz base is monitored **only by Ping**.
 - No additional Push monitor is created for the hub/base.
-- Somfy child devices such as Markise, Terrassenlicht and light sensors keep their own Push monitors.
+- Somfy child devices such as awnings, outdoor lights and light sensors keep their own Push monitors.
 
 ## 0.9.0
 
@@ -312,11 +315,8 @@ reported after roughly three minutes instead of immediately.
 - Default monitor prefix: `Fully Kiosk: `.
 - Default Uptime Kuma notifications are assigned automatically.
 
-### Expected devices for this installation
-- Fire Tablet (`192.168.11.226`)
-- Fire Tablet (`192.168.11.101`)
-- HUAWEI MediaPad M5 (`192.168.11.152`)
-- Redmi Pad SE / Tablet Arbeitszimmer (`192.168.11.254`)
+### Example devices
+- Wall-mounted tablets with a native Fully Kiosk config entry and local host.
 
 ## 0.4.0
 
@@ -341,14 +341,14 @@ reported after roughly three minutes instead of immediately.
 
 ### Fixed
 - Cloud Gateway host discovery now reads the matching UniFi config entry from Home Assistant's local `.storage/core.config_entries`.
-- Home Assistant's `config_entries/get` WebSocket response does not provide the private `data.host` value, which is why 0.3.6 could not see `192.168.178.1`.
+- Home Assistant's `config_entries/get` WebSocket response does not provide the private `data.host` value, which is why 0.3.6 could not see `device.example`.
 - The Home Assistant configuration directory is mounted read-only at `/homeassistant`; the app reads only the UniFi entry's `data.host`.
 - Public gateway tracker addresses are still rejected. If present, they are replaced by the private/local UniFi config-entry host.
 
-### Expected result for this installation
-- `UCG Fiber` tracker: `212.53.224.40`
-- UniFi config entry host: `192.168.178.1`
-- Kuma target: `192.168.178.1`
+### Example result
+- `UCG Fiber` tracker: `203.0.113.10`
+- UniFi config entry host: `device.example`
+- Kuma target: `device.example`
 
 ## 0.3.6
 
@@ -357,27 +357,27 @@ reported after roughly three minutes instead of immediately.
 - If a UniFi gateway tracker exposes a public WAN IP, HA Kuma Discovery now uses the matching UniFi config entry `data.host` instead.
 - This keeps switches/APs on their own tracker IPs while allowing the UniFi console/gateway itself to be monitored on its local management address.
 
-### Verified example
+### Example
 For the UniFi config entry used by the gateway:
-- tracker IP: `212.53.224.40` (public WAN)
-- config entry host: `192.168.178.1` (local management)
-- resulting Kuma ping target: `192.168.178.1`
+- tracker IP: `203.0.113.10` (public WAN)
+- config entry host: `device.example` (local management)
+- resulting Kuma ping target: `device.example`
 
 ## 0.3.5
 
 ### Fixed
 - UniFi monitor names now come from the UniFi `device_tracker` entity registry `original_name`.
-- This is the field where Home Assistant stores the real UniFi controller device name, e.g. `U6-Pro-OG`, `Core`, `UCG Fiber`, etc.
+- This is the field where Home Assistant stores the real UniFi controller device name, e.g. `Office AP`, `Core`, `UCG Fiber`, etc.
 - MAC addresses remain used only for matching the infrastructure device to its tracker/IP.
 - Previous fallback naming remains in place only if the tracker does not expose a usable name.
 
-### Verified from Home Assistant registry data
+### Illustrative registry data
 Example:
-- device registry name: `d0:21:f9:87:7f:c1`
-- tracker unique_id: `d0:21:f9:87:7f:c1`
-- tracker original_name: `U6-Pro-OG`
+- device registry name: `02:00:00:00:00:01`
+- tracker unique_id: `02:00:00:00:00:01`
+- tracker original_name: `Office AP`
 
-The app now uses `U6-Pro-OG`.
+The app now uses `Office AP`.
 
 ## 0.3.4
 
@@ -407,7 +407,7 @@ The app now uses `U6-Pro-OG`.
 ## 0.3.2
 
 ### Fixed
-- UniFi monitor names no longer use MAC addresses such as `d0:21:f9:87:7f:c1`.
+- UniFi monitor names no longer use MAC addresses such as `02:00:00:00:00:01`.
 - Friendly infrastructure names from the Home Assistant UniFi device registry are preferred.
 - MAC-shaped `name_by_user` / tracker labels are explicitly rejected.
 - Firmware/update suffixes are stripped when an update-entity name is used as a fallback.
