@@ -59,3 +59,25 @@ requests. Error summaries omit exception text to avoid exposing secret Push URLs
 
 Version 1.5.2 has automated regression tests. A live HA installation test remains
 necessary after updating; the test suite does not replace that check.
+
+## Homematic IP physical devices (next release)
+
+`discover_homematic_ip_infrastructure` retains its existing name and now covers
+physical HCU integration devices with an enabled native Connectivity binary
+sensor. Enable that entity in Home Assistant if you want the device monitored.
+The HCU remains `Homematic IP: HCU` via Ping. HAP access points and physical child
+devices use one `Homematic IP: <HA device name>` Push monitor each.
+Existing HAP monitor names and the debounce state are reused. No monitor is
+automatically deleted, and there is no separate HAP discovery path.
+
+Native `unreach` entities are preferred; native Connectivity device-class metadata
+is the fallback. HA `on` means connected; `off`, `unavailable`, `unknown` or a
+missing live state count as DOWN observations. The shared three-observation grace
+and immediate UP recovery apply. Disabled entities/devices, service entries,
+virtual/logical devices, groups, rooms and helpers are excluded. Hardware model
+prefixes follow the upstream integration; unrecognized models are skipped.
+Keep HA device names unique, as the existing Kuma lookup is name-based.
+
+Sources: [HCU binary sensor semantics](https://github.com/Ediminator/homematicip-hcu/blob/main/custom_components/hcu_integration/binary_sensor.py),
+[registry metadata](https://github.com/Ediminator/homematicip-hcu/blob/main/custom_components/hcu_integration/entity.py)
+and [physical model prefixes](https://github.com/Ediminator/homematicip-hcu/blob/main/custom_components/hcu_integration/const.py).
