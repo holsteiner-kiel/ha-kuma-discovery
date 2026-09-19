@@ -96,6 +96,18 @@ jobs:
           labels: |
             io.hass.type=app
             org.opencontainers.image.revision=${{ github.sha }}
+      - name: Verify anonymous pull, runtime imports and HA labels
+        if: needs.prepare.outputs.publish == 'true'
+        env:
+          IMAGE: ${{ matrix.image }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          docker logout ghcr.io
+          docker pull "${IMAGE}:${VERSION}"
+          test "$(docker image inspect "${IMAGE}:${VERSION}" --format '{{index .Config.Labels "io.hass.arch"}}')" = "${ARCH}"
+          test "$(docker image inspect "${IMAGE}:${VERSION}" --format '{{index .Config.Labels "io.hass.version"}}')" = "${VERSION}"
+          docker run --rm --entrypoint python3 "${IMAGE}:${VERSION}" -c 'import requests, websocket; from uptime_kuma_api import UptimeKumaApi; compile(open("/app.py").read(), "/app.py", "exec")'
 
   manifest:
     needs: [prepare, build]
@@ -118,5 +130,6 @@ jobs:
         env:
           VERSION: ${{ needs.prepare.outputs.version }}
         run: |
+          docker logout ghcr.io
           docker buildx imagetools inspect "ghcr.io/holsteiner-kiel/ha-kuma-discovery:${VERSION}" --raw > manifest.json
           jq -e '[.manifests[].platform | select(.os == "linux") | .architecture] | sort == ["amd64", "arm64"]' manifest.json
