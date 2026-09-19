@@ -1,4 +1,4 @@
-# HA Kuma Discovery 1.5.2
+# HA Kuma Discovery 1.6.0
 
 Home Assistant infrastructure and physical devices mirrored to Uptime Kuma.
 
@@ -9,7 +9,7 @@ app/add-on store, install HA Kuma Discovery and configure `kuma_url`,
 `kuma_username` and `kuma_password`. Start the add-on and inspect its logs.
 Home Assistant Supervisor is required. Architectures: amd64 and aarch64.
 
-Existing repository installations can update from 1.5.1 through the store.
+Existing repository installations can update from 1.5.1 or 1.5.2 through the store.
 Configuration and the state format remain compatible. Create a Home Assistant
 backup before updating. Only one discovery instance should run against the same
 managed Kuma monitors.
@@ -58,13 +58,13 @@ requests. Error summaries omit exception text to avoid exposing secret Push URLs
 - `Sync cycle took ...`: if cycles approach the heartbeat window, inspect slow or
   failing integrations and network connections.
 
-Version 1.5.2 has automated regression tests. A live HA installation test remains
+Version 1.6.0 has 41 automated behavior tests. A live HA installation test remains
 necessary after updating; the test suite does not replace that check.
 
-## Push reliability and Kuma diagnostics (next release)
+## Push reliability and Kuma diagnostics in 1.6.0
 
 The default 60-second sync and 180-second heartbeat window are unchanged.
-With typical 8-13-second successful cycles, one missed cycle leaves headroom;
+With typical 8–13-second successful cycles, one missed cycle leaves headroom;
 repeated failures or very long cycles can still exceed Kuma's window.
 An integration failure does not generate substitute UP heartbeats. Successful
 heartbeats already sent in a partially failed cycle remain saved; a failed Push
@@ -76,7 +76,7 @@ monitor/notification fetching, monitor creation/update or the Push HTTP call.
 These messages deliberately omit exception text, request URLs and credentials.
 The ordinary integration/global failure summary follows the stage diagnostic.
 
-## Homematic IP physical devices (next release)
+## Homematic IP physical devices in 1.6.0
 
 `discover_homematic_ip_infrastructure` retains its existing name and now covers
 physical HCU integration devices with an enabled native Connectivity binary
@@ -98,7 +98,7 @@ Sources: [HCU binary sensor semantics](https://github.com/Ediminator/homematicip
 [registry metadata](https://github.com/Ediminator/homematicip-hcu/blob/main/custom_components/hcu_integration/entity.py)
 and [physical model prefixes](https://github.com/Ediminator/homematicip-hcu/blob/main/custom_components/hcu_integration/const.py).
 
-## Optional integrations
+## Optional integrations in 1.6.0
 
 Discovery options may remain enabled when their HA integrations are not installed.
 Empty entry/device/entity lists are normal where no supported source exists;
@@ -106,4 +106,3 @@ they do not create monitors or report a failed integration. Empty host lookups
 also avoid touching HA config-entry storage or warning about a missing mount.
 Malformed responses and API failures still follow integration fault isolation;
 they are not silently interpreted as an absent integration.
-
