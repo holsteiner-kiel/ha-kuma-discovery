@@ -7,6 +7,7 @@ import re
 import time
 import ipaddress
 import tempfile
+from contextlib import contextmanager, ExitStack
 from pathlib import Path
 from typing import Dict, Any
 from urllib.parse import urljoin, urlparse
@@ -360,8 +361,33 @@ def notification_is_active(notification: Dict[str, Any]) -> bool:
     return notification.get("active", True) is not False
 
 
+@contextmanager
+def kuma_operation(stage):
+    """Report only our fixed stage and exception class, never request payloads."""
+    try:
+        yield
+    except Exception as exc:
+        LOG.error("Kuma operation failed: %s (%s)", stage, type(exc).__name__)
+        raise
+
+
+def kuma_call(stage, operation, *args, **kwargs):
+    with kuma_operation(stage):
+        return operation(*args, **kwargs)
+
+
+@contextmanager
+def kuma_session(opts):
+    with ExitStack() as stack:
+        with kuma_operation("opening Kuma API session"):
+            api = stack.enter_context(UptimeKumaApi(
+                opts["kuma_url"], timeout=30, ssl_verify=opts["verify_ssl"],
+            ))
+        yield api
+
+
 def get_default_notification_ids(api) -> list[int]:
-    notifications = normalize_items(api.get_notifications())
+    notifications = normalize_items(kuma_call("fetching notifications", api.get_notifications))
     ids = []
     for n in notifications:
         if notification_is_active(n) and notification_is_default(n):
@@ -413,9 +439,9 @@ def ensure_push_monitor(api, monitors, name, heartbeat_interval, default_notific
         }
         if default_notification_ids:
             kwargs["notificationIDList"] = default_notification_ids
-        api.add_monitor(**kwargs)
+        kuma_call("monitor creation", api.add_monitor, **kwargs)
         time.sleep(0.4)
-        monitors[:] = normalize_items(api.get_monitors())
+        monitors[:] = normalize_items(kuma_call("fetching monitors", api.get_monitors))
         monitor = find_monitor(monitors, name, "push")
         if not monitor:
             raise RuntimeError(f"Could not retrieve created monitor '{name}'")
@@ -440,9 +466,9 @@ def ensure_push_monitor(api, monitors, name, heartbeat_interval, default_notific
 
     if edit:
         LOG.info("Updating %s: %s", name, edit)
-        api.edit_monitor(int(monitor["id"]), **edit)
+        kuma_call("monitor update", api.edit_monitor, int(monitor["id"]), **edit)
         time.sleep(0.2)
-        monitors[:] = normalize_items(api.get_monitors())
+        monitors[:] = normalize_items(kuma_call("fetching monitors", api.get_monitors))
         monitor = find_monitor(monitors, name, "push")
 
     return monitor
@@ -471,9 +497,9 @@ def ensure_ping_monitor(
         }
         if default_notification_ids:
             kwargs["notificationIDList"] = default_notification_ids
-        api.add_monitor(**kwargs)
+        kuma_call("monitor creation", api.add_monitor, **kwargs)
         time.sleep(0.4)
-        monitors[:] = normalize_items(api.get_monitors())
+        monitors[:] = normalize_items(kuma_call("fetching monitors", api.get_monitors))
         monitor = find_monitor(monitors, name, "ping")
         if not monitor:
             raise RuntimeError(f"Could not retrieve created ping monitor '{name}'")
@@ -495,29 +521,30 @@ def ensure_ping_monitor(
 
     if edit:
         LOG.info("Updating ping monitor %s: %s", name, edit)
-        api.edit_monitor(int(monitor["id"]), **edit)
+        kuma_call("monitor update", api.edit_monitor, int(monitor["id"]), **edit)
         time.sleep(0.2)
-        monitors[:] = normalize_items(api.get_monitors())
+        monitors[:] = normalize_items(kuma_call("fetching monitors", api.get_monitors))
         monitor = find_monitor(monitors, name, "ping")
 
     return monitor
 
 
 def push_status(kuma_url, monitor, up, message, verify_ssl):
-    token = monitor.get("pushToken") or monitor.get("push_token")
-    if not token:
-        raise RuntimeError(f"Monitor '{monitor.get('name')}' has no push token")
+    with kuma_operation("Push heartbeat HTTP call"):
+        token = monitor.get("pushToken") or monitor.get("push_token")
+        if not token:
+            raise RuntimeError(f"Monitor '{monitor.get('name')}' has no push token")
 
-    r = HTTP.get(
-        f"{kuma_url}/api/push/{token}",
-        params={"status": "up" if up else "down", "msg": message[:250]},
-        timeout=20,
-        verify=verify_ssl,
-    )
-    r.raise_for_status()
-    payload = r.json()
-    if not payload.get("ok"):
-        raise RuntimeError(f"Push failed for '{monitor.get('name')}': {payload}")
+        r = HTTP.get(
+            f"{kuma_url}/api/push/{token}",
+            params={"status": "up" if up else "down", "msg": message[:250]},
+            timeout=20,
+            verify=verify_ssl,
+        )
+        r.raise_for_status()
+        payload = r.json()
+        if not payload.get("ok"):
+            raise RuntimeError(f"Push failed for '{monitor.get('name')}': {payload}")
 
 
 def push_status_if_needed(
@@ -530,30 +557,18 @@ def push_status_if_needed(
     heartbeat_interval,
     sync_interval,
 ):
-    """Push status changes immediately; otherwise refresh before timeout."""
+    """Send every evaluated state; commit the successful heartbeat only after I/O.
+
+    Keep the existing call signature and persisted cache format compatible.
+    Callers must obtain a real observation before invoking this helper.
+    """
     name = str(monitor.get("name") or monitor.get("id") or "unknown")
-    cache = state.setdefault("_push_status_cache", {})
-    previous = cache.get(name) if isinstance(cache.get(name), dict) else {}
+    push_status(kuma_url, monitor, up, message, verify_ssl)
+    state.setdefault("_push_status_cache", {})[name] = {
+        "up": bool(up), "last_push": time.time(),
+    }
+    return True
 
-    now = time.time()
-    previous_up = previous.get("up")
-    last_push = float(previous.get("last_push") or 0)
-
-    # Keep Push monitors comfortably inside Kuma's heartbeat window.
-    # With the default 60 s sync cycle this refreshes every cycle, while
-    # Kuma's monitor heartbeat window can remain at 180 s for headroom.
-    refresh_after = min(60, max(20, int(heartbeat_interval) - 30))
-    refresh_after = max(refresh_after, int(sync_interval))
-
-    status_changed = previous_up is None or bool(previous_up) != bool(up)
-    refresh_due = (now - last_push) >= refresh_after
-
-    if status_changed or refresh_due:
-        push_status(kuma_url, monitor, up, message, verify_ssl)
-        cache[name] = {"up": bool(up), "last_push": now}
-        return True
-
-    return False
 
 
 def _clean_shelly_name(name: str) -> str:
@@ -1563,13 +1578,7 @@ def discover_fully_kiosk_devices() -> list[Dict[str, str]]:
 
 
 def discover_homematic_ip_infrastructure() -> Dict[str, Any]:
-    """
-    Discover only Homematic IP infrastructure from the HCU integration itself.
-
-    No dependency on UniFi, FRITZ!Box or any other network integration:
-      - HCU: management IP from hcu_integration config-entry data.host
-      - HmIP-HAP: reachability from its hcu_integration connectivity binary_sensor
-    """
+    """Discover the HCU Ping target and native physical Connectivity devices."""
     with HAWebSocket() as ha:
         entries = ha.call({"type": "config_entries/get", "domain": "hcu_integration"}) or []
         devices = ha.call({"type": "config/device_registry/list"}) or []
@@ -1595,14 +1604,15 @@ def discover_homematic_ip_infrastructure() -> Dict[str, Any]:
     entities_by_device: Dict[str, list[Dict[str, Any]]] = {}
     for entity in entities:
         eid = str(entity.get("config_entry_id") or "")
-        if eid not in entry_ids:
+        if eid not in entry_ids or entity.get("platform") != "hcu_integration":
             continue
         did = str(entity.get("device_id") or "")
         if did:
             entities_by_device.setdefault(did, []).append(entity)
 
     hcu = None
-    access_points = []
+    connectivity_devices = []
+    seen_devices = set()
 
     for device in devices:
         eid = str(device.get("config_entry_id") or "")
@@ -1618,7 +1628,13 @@ def discover_homematic_ip_infrastructure() -> Dict[str, Any]:
         did = str(device.get("id") or "")
         name = str(device.get("name_by_user") or device.get("name") or model).strip()
 
-        if model == "HmIP-HCU1":
+        if not did or did in seen_devices or device.get("disabled_by") is not None:
+            continue
+        if not _device_has_identifier(device, "hcu_integration"):
+            continue
+        seen_devices.add(did)
+
+        if model in {"HmIP-HCU1", "HmIP-HCU-1", "HmIP-HCU1-A"}:
             host = None
             source_entry = None
             for candidate_eid in matching:
@@ -1638,38 +1654,49 @@ def discover_homematic_ip_infrastructure() -> Dict[str, Any]:
             else:
                 LOG.warning("Homematic IP HCU '%s' has no usable local host", name)
 
-        elif model == "HmIP-HAP":
-            connectivity = None
+        else:
+            # HCU physical models and native registry identifiers are positive
+            # evidence of hardware. Groups/services and virtual models are not.
+            if device.get("entry_type") is not None:
+                continue
+            if not model.lower().startswith(("hmip-", "hmipw-", "hm-", "alpha-", "elv")):
+                continue
+            if any(word in model.lower() for word in ("virtual", "logical", "group", "room", "helper")):
+                continue
+
+            candidates = []
             for entity in entities_by_device.get(did, []):
                 entity_id = str(entity.get("entity_id") or "")
-                if not entity_id.startswith("binary_sensor."):
+                if entity.get("disabled_by") is not None or not entity_id.startswith("binary_sensor."):
                     continue
-
-                original_name = str(entity.get("original_name") or "").strip().lower()
+                current = state_by_entity.get(entity_id) or {}
+                attributes = current.get("attributes") or {}
+                if attributes.get("is_group"):
+                    continue
                 unique_id = str(entity.get("unique_id") or "").lower()
+                native_unreach = unique_id.endswith("_unreach")
+                device_class = (entity.get("original_device_class")
+                                or attributes.get("device_class"))
+                if native_unreach or device_class == "connectivity":
+                    candidates.append((not native_unreach, unique_id, entity_id, current))
 
-                if original_name == "connectivity" or unique_id.endswith("_unreach"):
-                    connectivity = entity_id
-                    break
-
-            if connectivity:
-                current = state_by_entity.get(connectivity) or {}
-                access_points.append({
-                    "device_id": did,
-                    "name": name or "Access Point",
-                    "model": model,
-                    "connectivity_entity": connectivity,
-                    "state": str(current.get("state") or "unknown").lower(),
-                })
-            else:
-                LOG.warning(
-                    "Homematic IP Access Point '%s' has no connectivity entity; skipping.",
-                    name,
-                )
+            if not candidates:
+                LOG.info("Skipping Homematic IP device '%s': no enabled Connectivity entity", name)
+                continue
+            # Prefer the integration's native unreach feature; select exactly
+            # one deterministically even if multiple channel entities exist.
+            _, _, connectivity, current = min(candidates, key=lambda item: item[:3])
+            connectivity_devices.append({
+                "device_id": did,
+                "name": name or model,
+                "model": model,
+                "connectivity_entity": connectivity,
+                "state": str(current.get("state") or "unknown").lower(),
+            })
 
     return {
         "hcu": hcu,
-        "access_points": access_points,
+        "devices": connectivity_devices,
     }
 
 
@@ -3332,9 +3359,9 @@ def sync_homematic_ip_infrastructure(opts, api, monitors, default_notification_i
             hcu["source"],
         )
 
-    aps = infra.get("access_points") or []
-    for ap in aps:
-        monitor_name = f'{prefix}{ap["name"]}'
+    devices = infra.get("devices") or []
+    for device in devices:
+        monitor_name = f'{prefix}{device["name"]}'
         monitor = ensure_push_monitor(
             api,
             monitors,
@@ -3348,17 +3375,17 @@ def sync_homematic_ip_infrastructure(opts, api, monitors, default_notification_i
         #   off = disconnected/unreachable
         # Unknown/unavailable is treated as DOWN because the integration itself
         # cannot currently confirm reachability.
-        ha_state = ap["state"]
+        ha_state = device["state"]
         up = ha_state == "on"
 
         effective_up, down_cycles = _push_effective_up(
             state,
             "homematic_ip",
-            ap["device_id"],
+            device["device_id"],
             up,
             opts["push_down_grace_cycles"],
         )
-        message = f'HA {ap["connectivity_entity"]}: {ha_state}'
+        message = f'HA {device["connectivity_entity"]}: {ha_state}'
         if not up and effective_up:
             message += f' | DOWN grace {down_cycles}/{opts["push_down_grace_cycles"]}'
 
@@ -3376,23 +3403,27 @@ def sync_homematic_ip_infrastructure(opts, api, monitors, default_notification_i
             "%s -> %s via %s (observed=%s, down_grace=%d/%d, HA state=%s)",
             monitor_name,
             "UP" if effective_up else "DOWN",
-            ap["connectivity_entity"],
+            device["connectivity_entity"],
             "UP" if up else "DOWN",
             down_cycles,
             opts["push_down_grace_cycles"],
             ha_state,
         )
 
+    records = {
+        device["device_id"]: {
+            "name": device["name"],
+            "model": device["model"],
+            "connectivity_entity": device["connectivity_entity"],
+        }
+        for device in devices
+    }
     state["homematic_ip"] = {
         "hcu": hcu or {},
-        "access_points": {
-            ap["device_id"]: {
-                "name": ap["name"],
-                "model": ap["model"],
-                "connectivity_entity": ap["connectivity_entity"],
-            }
-            for ap in aps
-        },
+        "devices": records,
+        # Keep the existing HAP inventory key for persisted-state compatibility.
+        "access_points": {did: item for did, item in records.items()
+                          if item["model"] == "HmIP-HAP"},
     }
 
 
@@ -3514,11 +3545,10 @@ def sync_unifi_network_devices(opts, api, monitors, default_notification_ids, st
 def sync_once(opts):
     state = load_state()
     try:
-        with UptimeKumaApi(
-            opts["kuma_url"], timeout=30, ssl_verify=opts["verify_ssl"],
-        ) as api:
-            api.login(opts["kuma_username"], opts["kuma_password"])
-            monitors = normalize_items(api.get_monitors())
+        with kuma_session(opts) as api:
+            kuma_call("authentication/login", api.login,
+                      opts["kuma_username"], opts["kuma_password"])
+            monitors = normalize_items(kuma_call("fetching monitors", api.get_monitors))
             default_notification_ids = get_default_notification_ids(api)
             jobs = [
                 (opts["discover_addons"], sync_addons),
