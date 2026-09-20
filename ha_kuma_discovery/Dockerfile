@@ -13,6 +13,7 @@ COPY run.sh /run.sh
 COPY app.py /app.py
 COPY ha_client.py /ha_client.py
 COPY integration_addons.py /integration_addons.py
+COPY integration_shelly.py /integration_shelly.py
 COPY kuma_monitor.py /kuma_monitor.py
 COPY push_state.py /push_state.py
 COPY state_store.py /state_store.py
