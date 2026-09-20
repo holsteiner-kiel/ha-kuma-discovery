@@ -366,24 +366,29 @@ def notification_is_active(notification: Dict[str, Any]) -> bool:
 
 
 @contextmanager
-def kuma_operation(stage):
+def kuma_operation(stage, log_duration=False):
     """Report only our fixed stage and exception class, never request payloads."""
+    started = time.monotonic()
     try:
         yield
     except Exception as exc:
         LOG.error("Kuma operation failed: %s (%s)", stage, type(exc).__name__)
         raise
+    else:
+        if log_duration:
+            LOG.info("Kuma operation completed: %s in %.1fs",
+                     stage, time.monotonic() - started)
 
 
-def kuma_call(stage, operation, *args, **kwargs):
-    with kuma_operation(stage):
+def kuma_call(stage, operation, *args, _log_duration=False, **kwargs):
+    with kuma_operation(stage, log_duration=_log_duration):
         return operation(*args, **kwargs)
 
 
 @contextmanager
 def kuma_session(opts):
     with ExitStack() as stack:
-        with kuma_operation("opening Kuma API session"):
+        with kuma_operation("opening Kuma API session", log_duration=True):
             api = stack.enter_context(UptimeKumaApi(
                 opts["kuma_url"], timeout=30, ssl_verify=opts["verify_ssl"],
             ))
@@ -391,7 +396,9 @@ def kuma_session(opts):
 
 
 def get_default_notification_ids(api) -> list[int]:
-    notifications = normalize_items(kuma_call("fetching notifications", api.get_notifications))
+    notifications = normalize_items(kuma_call(
+        "fetching notifications", api.get_notifications, _log_duration=True,
+    ))
     ids = []
     for n in notifications:
         if notification_is_active(n) and notification_is_default(n):
@@ -3635,8 +3642,11 @@ def sync_once(opts):
     try:
         with kuma_session(opts) as api:
             kuma_call("authentication/login", api.login,
-                      opts["kuma_username"], opts["kuma_password"])
-            monitors = normalize_items(kuma_call("fetching monitors", api.get_monitors))
+                      opts["kuma_username"], opts["kuma_password"],
+                      _log_duration=True)
+            monitors = normalize_items(kuma_call(
+                "fetching monitors", api.get_monitors, _log_duration=True,
+            ))
             default_notification_ids = get_default_notification_ids(api)
             jobs = [
                 (opts["discover_addons"], sync_addons),
@@ -3658,11 +3668,13 @@ def sync_once(opts):
             ]
             failed = []
             completed = 0
+            timings = []
             HAWebSocket.begin_cycle()
             try:
                 for enabled, sync in jobs:
                     if not enabled:
                         continue
+                    integration_started = time.monotonic()
                     try:
                         sync(opts, api, monitors, default_notification_ids, state)
                         completed += 1
@@ -3671,8 +3683,14 @@ def sync_once(opts):
                         # Request exceptions can contain secret Push URLs.
                         LOG.error("Integration %s failed (%s); continuing with remaining integrations",
                                   sync.__name__, type(exc).__name__)
+                    finally:
+                        timings.append((sync.__name__, time.monotonic() - integration_started))
             finally:
                 HAWebSocket.end_cycle()
+            if timings:
+                LOG.info("Integration timings: %s", ", ".join(
+                    f"{name}={duration:.1f}s" for name, duration in timings
+                ))
             if failed:
                 LOG.warning("Sync partially completed: %d succeeded, %d failed: %s",
                             completed, len(failed), ", ".join(failed))
