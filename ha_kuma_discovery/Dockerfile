@@ -13,6 +13,7 @@ COPY run.sh /run.sh
 COPY app.py /app.py
 COPY ha_client.py /ha_client.py
 COPY integration_addons.py /integration_addons.py
+COPY integration_airgradient.py /integration_airgradient.py
 COPY integration_e3dc.py /integration_e3dc.py
 COPY integration_esphome.py /integration_esphome.py
 COPY integration_fritz.py /integration_fritz.py
