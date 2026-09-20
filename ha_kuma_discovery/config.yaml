@@ -1,7 +1,8 @@
 name: "HA Kuma Discovery"
-version: "1.6.0"
+version: "2.0.0"
 slug: "ha_kuma_discovery"
 url: "https://github.com/holsteiner-kiel/ha-kuma-discovery"
+image: "ghcr.io/holsteiner-kiel/ha-kuma-discovery"
 description: "Discovers Home Assistant infrastructure and physical devices and mirrors them to Uptime Kuma."
 arch:
   - aarch64
@@ -37,6 +38,11 @@ options:
   discover_smlight_devices: true
   discover_stiebel_eltron: true
   discover_synology_dsm: true
+  discover_airgradient_devices: true
+  airgradient_ping_interval: 60
+  airgradient_max_retries: 2
+  airgradient_monitor_prefix: "AirGradient: "
+
   discover_esphome_devices: true
   discover_zigbee2mqtt_devices: true
   discover_mqtt_devices: true
@@ -108,6 +114,11 @@ schema:
   discover_smlight_devices: bool
   discover_stiebel_eltron: bool
   discover_synology_dsm: bool
+  discover_airgradient_devices: bool
+  airgradient_ping_interval: int
+  airgradient_max_retries: int
+  airgradient_monitor_prefix: str
+
   discover_esphome_devices: bool
   discover_zigbee2mqtt_devices: bool
   discover_mqtt_devices: bool

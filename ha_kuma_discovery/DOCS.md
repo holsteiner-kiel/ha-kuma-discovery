@@ -1,4 +1,4 @@
-# HA Kuma Discovery 1.6.0
+# HA Kuma Discovery 2.0.0
 
 Home Assistant infrastructure and physical devices mirrored to Uptime Kuma.
 
@@ -9,7 +9,10 @@ app/add-on store, install HA Kuma Discovery and configure `kuma_url`,
 `kuma_username` and `kuma_password`. Start the add-on and inspect its logs.
 Home Assistant Supervisor is required. Architectures: amd64 and aarch64.
 
-Existing repository installations can update from 1.5.1 or 1.5.2 through the store.
+Installations download the prebuilt GHCR image matching the app version.
+Maintainers: see [container publishing and release preparation](../PUBLISHING.md).
+
+Existing repository installations can update from 1.5.1, 1.5.2 or 1.6.0 through the store.
 Configuration and the state format remain compatible. Create a Home Assistant
 backup before updating. Only one discovery instance should run against the same
 managed Kuma monitors.
@@ -58,7 +61,7 @@ requests. Error summaries omit exception text to avoid exposing secret Push URLs
 - `Sync cycle took ...`: if cycles approach the heartbeat window, inspect slow or
   failing integrations and network connections.
 
-Version 1.6.0 has 41 automated behavior tests. A live HA installation test remains
+Version 2.0.0 has 50 automated behavior tests plus five image-policy tests. A live HA installation test remains
 necessary after updating; the test suite does not replace that check.
 
 ## Push reliability and Kuma diagnostics in 1.6.0
@@ -106,3 +109,28 @@ they do not create monitors or report a failed integration. Empty host lookups
 also avoid touching HA config-entry storage or warning about a missing mount.
 Malformed responses and API failures still follow integration fault isolation;
 they are not silently interpreted as an absent integration.
+
+## AirGradient in 2.0.0
+
+Native Home Assistant AirGradient devices receive one Ping monitor each using
+the integration's explicit `data.host` (read from HA storage when the WebSocket
+entry omits it). The physical device's HA name is used with `AirGradient: `.
+Without a name, the entry title and native serial identify the device; duplicate
+names are serial-qualified. No address is derived from entity names or guessed.
+Missing/invalid hosts are skipped with an informational message. An absent
+integration or empty device registry is a normal no-op, even when enabled.
+
+```yaml
+discover_airgradient_devices: true
+airgradient_ping_interval: 60
+airgradient_max_retries: 2
+airgradient_monitor_prefix: "AirGradient: "
+```
+
+Existing same-name Ping monitors are reused and their hosts updated when HA
+changes the address. Default notification assignment follows the other Ping
+integrations. As elsewhere, renaming a device can leave an old monitor for manual
+review; the app does not delete monitors. Keep user-assigned device names unique.
+
+Sources: [native entry host](https://github.com/home-assistant/core/blob/dev/homeassistant/components/airgradient/config_flow.py)
+and [physical registry identifiers](https://github.com/home-assistant/core/blob/dev/homeassistant/components/airgradient/entity.py).

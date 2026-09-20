@@ -4,7 +4,7 @@
 
 Home Assistant devices and infrastructure mirrored to Uptime Kuma.
 
-Current version: **1.6.0**. Based on the original 1.5.1 add-on. Supports amd64 and aarch64.
+Current version: **2.0.0**. Based on the original 1.5.1 add-on. Supports amd64 and aarch64.
 
 ## Installation
 
@@ -22,18 +22,18 @@ Install **HA Kuma Discovery**, set `kuma_url`, `kuma_username` and `kuma_passwor
 
 Keep a backup of the existing add-on configuration and data. A repository installation has a different add-on identity from a local installation; settings and `/data/state.json` are not migrated automatically. Stop the local copy before starting the repository copy, and verify the resulting Kuma monitors before removing the old installation.
 
-## Version 1.6.0
+## Version 2.0.0
 
 With the default settings, every successfully evaluated Push monitor sends its current state each cycle. Kuma retains its 180-second heartbeat window and DOWN requires three consecutive unavailable cycles. Recovery is reported immediately.
 
-Version 1.6.0 adds native Connectivity monitoring for physical Homematic IP devices, identifies the stage of Kuma failures, and treats absent optional Home Assistant integrations as a normal no-op. Existing configuration and state remain compatible. See the changelog for details.
+Version 2.0.0 installs from signed, versioned GHCR images instead of compiling the container locally and adds native AirGradient Ping monitoring. Existing configuration and state remain compatible. See the changelog for details.
 
 - [Configuration and operation](ha_kuma_discovery/DOCS.md)
 - [Changelog](ha_kuma_discovery/CHANGELOG.md)
 
 ## Validation
 
-GitHub Actions runs 41 behavior tests plus Python compilation, shell syntax and YAML metadata checks on pushes and pull requests. These checks do not replace testing inside Home Assistant with a running Uptime Kuma instance.
+GitHub Actions runs 50 behavior tests and five image-publication policy tests plus Python compilation, shell syntax, YAML metadata and native amd64/aarch64 container builds. These checks do not replace testing inside Home Assistant with a running Uptime Kuma instance.
 
 ## License
 
