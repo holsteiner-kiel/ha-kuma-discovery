@@ -151,6 +151,23 @@ class CycleTests(unittest.TestCase):
         with self.assertRaises(KeyboardInterrupt):
             self.run_cycle(failure=KeyboardInterrupt())
 
+    def test_cycle_logs_one_timing_summary_without_secret_errors(self):
+        with self.assertLogs(app.LOG, level='INFO') as logs:
+            self.run_cycle(RuntimeError('secret push URL'))
+        output = '\n'.join(logs.output)
+        self.assertIn('Integration timings:', output)
+        self.assertIn('sync_addons=', output)
+        self.assertIn('sync_mqtt_devices=', output)
+        self.assertEqual(output.count('Integration timings:'), 1)
+        self.assertNotIn('secret push URL', output)
+
+    def test_kuma_operation_duration_uses_fixed_stage_only(self):
+        with patch.object(app.time, 'monotonic', side_effect=[10.0, 10.25]), \
+             self.assertLogs(app.LOG, level='INFO') as logs:
+            self.assertEqual(app.kuma_call('fetching monitors', lambda: 'ok',
+                                           _log_duration=True), 'ok')
+        self.assertIn('fetching monitors in 0.2s', '\n'.join(logs.output))
+
 
 class HeartbeatTests(unittest.TestCase):
     def push(self, state, now, up=True):
