@@ -14,7 +14,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Compile Python
-        run: python -m py_compile ha_kuma_discovery/app.py ha_kuma_discovery/ha_client.py ha_kuma_discovery/integration_addons.py ha_kuma_discovery/integration_e3dc.py ha_kuma_discovery/integration_fritz.py ha_kuma_discovery/integration_fully_kiosk.py ha_kuma_discovery/integration_homematic.py ha_kuma_discovery/integration_matter.py ha_kuma_discovery/integration_overkiz.py ha_kuma_discovery/integration_shelly.py ha_kuma_discovery/integration_unifi.py ha_kuma_discovery/kuma_monitor.py ha_kuma_discovery/push_state.py ha_kuma_discovery/state_store.py
+        run: python -m py_compile ha_kuma_discovery/app.py ha_kuma_discovery/ha_client.py ha_kuma_discovery/integration_addons.py ha_kuma_discovery/integration_e3dc.py ha_kuma_discovery/integration_fritz.py ha_kuma_discovery/integration_fully_kiosk.py ha_kuma_discovery/integration_homematic.py ha_kuma_discovery/integration_hue.py ha_kuma_discovery/integration_matter.py ha_kuma_discovery/integration_overkiz.py ha_kuma_discovery/integration_shelly.py ha_kuma_discovery/integration_unifi.py ha_kuma_discovery/kuma_monitor.py ha_kuma_discovery/push_state.py ha_kuma_discovery/state_store.py
       - name: Check startup script
         run: bash -n ha_kuma_discovery/run.sh
       - name: Install test dependencies
