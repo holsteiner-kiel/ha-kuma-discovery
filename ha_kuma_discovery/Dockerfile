@@ -13,6 +13,7 @@ COPY run.sh /run.sh
 COPY app.py /app.py
 COPY ha_client.py /ha_client.py
 COPY integration_addons.py /integration_addons.py
+COPY integration_fritz.py /integration_fritz.py
 COPY integration_shelly.py /integration_shelly.py
 COPY integration_unifi.py /integration_unifi.py
 COPY kuma_monitor.py /kuma_monitor.py
