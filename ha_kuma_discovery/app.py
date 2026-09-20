@@ -346,6 +346,36 @@ def find_monitor(monitors, name: str, monitor_type: str):
     return None
 
 
+def find_managed_monitor(monitors, name, monitor_type, state=None, identity=None):
+    """Resolve a managed monitor by its persisted source identity before name."""
+    if state is not None and identity:
+        record = state.get("_monitor_identities", {}).get(identity, {})
+        monitor_id = record.get("monitor_id")
+        if monitor_id is not None:
+            for monitor in monitors:
+                if (str(monitor.get("id")) == str(monitor_id)
+                        and monitor.get("type") == monitor_type):
+                    return monitor
+
+        previous_name = str(record.get("name") or "")
+        if previous_name:
+            previous = find_monitor(monitors, previous_name, monitor_type)
+            if previous:
+                return previous
+
+    return find_monitor(monitors, name, monitor_type)
+
+
+def remember_monitor_identity(state, identity, monitor, name, monitor_type):
+    if state is None or not identity or not monitor or monitor.get("id") is None:
+        return
+    state.setdefault("_monitor_identities", {})[identity] = {
+        "monitor_id": monitor["id"],
+        "name": name,
+        "type": monitor_type,
+    }
+
+
 def notification_is_default(notification: Dict[str, Any]) -> bool:
     if bool(notification.get("isDefault")):
         return True
@@ -436,8 +466,11 @@ def monitor_notification_ids(monitor: Dict[str, Any]) -> list[int]:
     return []
 
 
-def ensure_push_monitor(api, monitors, name, heartbeat_interval, default_notification_ids):
-    monitor = find_monitor(monitors, name, "push")
+def ensure_push_monitor(
+    api, monitors, name, heartbeat_interval, default_notification_ids,
+    state=None, identity=None,
+):
+    monitor = find_managed_monitor(monitors, name, "push", state, identity)
 
     if not monitor:
         LOG.info("Creating Uptime Kuma push monitor: %s", name)
@@ -456,9 +489,12 @@ def ensure_push_monitor(api, monitors, name, heartbeat_interval, default_notific
         monitor = find_monitor(monitors, name, "push")
         if not monitor:
             raise RuntimeError(f"Could not retrieve created monitor '{name}'")
+        remember_monitor_identity(state, identity, monitor, name, "push")
         return monitor
 
     edit = {}
+    if str(monitor.get("name") or "") != name:
+        edit["name"] = name
     current_interval = int(monitor.get("interval") or 0)
     if (
         current_interval != heartbeat_interval
@@ -480,8 +516,9 @@ def ensure_push_monitor(api, monitors, name, heartbeat_interval, default_notific
         kuma_call("monitor update", api.edit_monitor, int(monitor["id"]), **edit)
         time.sleep(0.2)
         monitors[:] = normalize_items(kuma_call("fetching monitors", api.get_monitors))
-        monitor = find_monitor(monitors, name, "push")
+        monitor = find_managed_monitor(monitors, name, "push", state, identity)
 
+    remember_monitor_identity(state, identity, monitor, name, "push")
     return monitor
 
 
@@ -493,8 +530,10 @@ def ensure_ping_monitor(
     interval,
     max_retries,
     default_notification_ids,
+    state=None,
+    identity=None,
 ):
-    monitor = find_monitor(monitors, name, "ping")
+    monitor = find_managed_monitor(monitors, name, "ping", state, identity)
 
     if not monitor:
         LOG.info("Creating ping monitor: %s -> %s", name, host)
@@ -514,9 +553,12 @@ def ensure_ping_monitor(
         monitor = find_monitor(monitors, name, "ping")
         if not monitor:
             raise RuntimeError(f"Could not retrieve created ping monitor '{name}'")
+        remember_monitor_identity(state, identity, monitor, name, "ping")
         return monitor
 
     edit = {}
+    if str(monitor.get("name") or "") != name:
+        edit["name"] = name
     if str(monitor.get("hostname") or "") != host:
         edit["hostname"] = host
     if int(monitor.get("interval") or 0) != interval:
@@ -535,8 +577,9 @@ def ensure_ping_monitor(
         kuma_call("monitor update", api.edit_monitor, int(monitor["id"]), **edit)
         time.sleep(0.2)
         monitors[:] = normalize_items(kuma_call("fetching monitors", api.get_monitors))
-        monitor = find_monitor(monitors, name, "ping")
+        monitor = find_managed_monitor(monitors, name, "ping", state, identity)
 
+    remember_monitor_identity(state, identity, monitor, name, "ping")
     return monitor
 
 
@@ -764,7 +807,8 @@ def sync_addons(opts, api, monitors, default_notification_ids, state):
 
         monitor = ensure_push_monitor(
             api, monitors, monitor_name,
-            opts["heartbeat_interval"], default_notification_ids
+            opts["heartbeat_interval"], default_notification_ids,
+            state=state, identity=f'addon:{slug}',
         )
 
         up = status == "started"
@@ -796,6 +840,8 @@ def sync_shelly(opts, api, monitors, default_notification_ids, state):
             opts["shelly_ping_interval"],
             opts["shelly_max_retries"],
             default_notification_ids,
+            state=state,
+            identity=f'shelly:{device["device_id"]}',
         )
         LOG.info(
             "%s -> PING %s (device_id=%s)",
@@ -2385,6 +2431,8 @@ def sync_smlight_devices(opts, api, monitors, default_notification_ids, state):
             opts["smlight_ping_interval"],
             opts["smlight_max_retries"],
             default_notification_ids,
+            state=state,
+            identity=f'smlight:{device["entry_id"]}',
         )
 
         LOG.info(
@@ -2502,6 +2550,8 @@ def sync_stiebel_eltron(opts, api, monitors, default_notification_ids, state):
             opts["stiebel_eltron_ping_interval"],
             opts["stiebel_eltron_max_retries"],
             default_notification_ids,
+            state=state,
+            identity=f'stiebel_eltron:{device["entry_id"]}',
         )
         LOG.info(
             "%s -> PING %s (source=stiebel_eltron_isg.config_entry.host, modbus_port=%s)",
@@ -2624,6 +2674,8 @@ def sync_synology_dsm(opts, api, monitors, default_notification_ids, state):
             opts["synology_ping_interval"],
             opts["synology_max_retries"],
             default_notification_ids,
+            state=state,
+            identity=f'synology_dsm:{device["entry_id"]}',
         )
 
         LOG.info(
@@ -2717,6 +2769,8 @@ def sync_esphome_devices(opts, api, monitors, default_notification_ids, state):
             opts["esphome_ping_interval"],
             opts["esphome_max_retries"],
             default_notification_ids,
+            state=state,
+            identity=f'esphome:{device["entry_id"]}',
         )
 
         LOG.info(
@@ -2814,7 +2868,8 @@ def sync_airgradient_devices(opts, api, monitors, default_notification_ids, stat
         name = f'{opts["airgradient_monitor_prefix"]}{device["name"]}'
         ensure_ping_monitor(api, monitors, name, device["host"],
                             opts["airgradient_ping_interval"], opts["airgradient_max_retries"],
-                            default_notification_ids)
+                            default_notification_ids, state=state,
+                            identity=f'airgradient:{device["entry_id"]}')
         LOG.info("%s -> PING %s (source=airgradient.config_entry.host)", name, device["host"])
     state["airgradient"] = {
         d["device_id"]: {"name": d["name"], "host": d["host"], "entry_id": d["entry_id"]}
@@ -3055,6 +3110,8 @@ def _sync_mqtt_device_list(
             monitor_name,
             opts["heartbeat_interval"],
             default_notification_ids,
+            state=state,
+            identity=f'{state_key}:{device["device_id"]}',
         )
 
         effective_up, down_cycles = _push_effective_up(
@@ -3158,6 +3215,8 @@ def sync_hue(opts, api, monitors, default_notification_ids, state):
                 opts["hue_ping_interval"],
                 opts["hue_max_retries"],
                 default_notification_ids,
+                state=state,
+                identity=f'hue_bridge:{bridge["entry_id"]}',
             )
             LOG.info(
                 "%s -> PING %s (source=hue.config_entry.host, title=%s)",
@@ -3178,6 +3237,8 @@ def sync_hue(opts, api, monitors, default_notification_ids, state):
                 monitor_name,
                 opts["heartbeat_interval"],
                 default_notification_ids,
+                state=state,
+                identity=f'hue_device:{device["device_id"]}',
             )
 
             message = (
@@ -3250,6 +3311,8 @@ def sync_overkiz_devices(opts, api, monitors, default_notification_ids, state):
             opts["overkiz_ping_interval"],
             opts["overkiz_max_retries"],
             default_notification_ids,
+            state=state,
+            identity=f'overkiz_hub:{hub["entry_id"]}',
         )
         LOG.info(
             "%s -> PING %s (source=%s)",
@@ -3269,6 +3332,8 @@ def sync_overkiz_devices(opts, api, monitors, default_notification_ids, state):
             monitor_name,
             opts["heartbeat_interval"],
             default_notification_ids,
+            state=state,
+            identity=f'overkiz_device:{device["device_id"]}',
         )
 
         message = (
@@ -3340,6 +3405,8 @@ def sync_e3dc_devices(opts, api, monitors, default_notification_ids, state):
             opts["e3dc_ping_interval"],
             opts["e3dc_max_retries"],
             default_notification_ids,
+            state=state,
+            identity=f'e3dc:{device["device_id"]}',
         )
         LOG.info(
             "%s -> PING %s (model=%s, serial=%s, source=%s, device_id=%s)",
@@ -3375,6 +3442,8 @@ def sync_matter_devices(opts, api, monitors, default_notification_ids, state):
             monitor_name,
             opts["heartbeat_interval"],
             default_notification_ids,
+            state=state,
+            identity=f'matter:{device["device_id"]}',
         )
 
         message = (
@@ -3445,6 +3514,8 @@ def sync_homematic_ip_infrastructure(opts, api, monitors, default_notification_i
             opts["homematic_ip_ping_interval"],
             opts["homematic_ip_max_retries"],
             default_notification_ids,
+            state=state,
+            identity=f'homematic_hcu:{hcu["device_id"]}',
         )
         LOG.info(
             "%s -> PING %s (model=%s, source=%s)",
@@ -3463,6 +3534,8 @@ def sync_homematic_ip_infrastructure(opts, api, monitors, default_notification_i
             monitor_name,
             opts["heartbeat_interval"],
             default_notification_ids,
+            state=state,
+            identity=f'homematic_device:{device["device_id"]}',
         )
 
         # HA connectivity binary_sensor:
@@ -3539,6 +3612,8 @@ def sync_fully_kiosk_devices(opts, api, monitors, default_notification_ids, stat
             opts["fully_kiosk_ping_interval"],
             opts["fully_kiosk_max_retries"],
             default_notification_ids,
+            state=state,
+            identity=f'fully_kiosk:{device["device_id"]}',
         )
         LOG.info(
             "%s -> PING %s (model=%s, area=%s, device_id=%s)",
@@ -3578,6 +3653,8 @@ def sync_fritz_network_devices(opts, api, monitors, default_notification_ids, st
             opts["fritz_ping_interval"],
             opts["fritz_max_retries"],
             default_notification_ids,
+            state=state,
+            identity=f'fritz:{device["device_id"]}',
         )
         LOG.info(
             "%s -> PING %s (model=%s, source=%s, device_id=%s)",
@@ -3616,6 +3693,8 @@ def sync_unifi_network_devices(opts, api, monitors, default_notification_ids, st
             opts["unifi_ping_interval"],
             opts["unifi_max_retries"],
             default_notification_ids,
+            state=state,
+            identity=f'unifi:{device["device_id"]}',
         )
         LOG.info(
             "%s -> PING %s (model=%s, source=%s, device_id=%s)",

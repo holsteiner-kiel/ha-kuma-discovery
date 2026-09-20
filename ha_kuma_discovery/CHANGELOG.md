@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.1.0
+
+### Added
+- Persist a stable source-to-monitor identity for every managed Ping and Push
+  monitor after it has been found or created successfully.
+
+### Improved
+- Reuse and rename the same Uptime Kuma monitor when a Home Assistant device,
+  integration entry or app/add-on is renamed instead of creating a duplicate.
+- Fall back to the previously recorded monitor name when a stored Kuma ID is no
+  longer available, which supports migration from the existing name-based lookup.
+
+### Compatibility
+- Existing installations bootstrap stable identities from their current monitor
+  names during the first successful 2.1.0 sync; no configuration change is needed.
+- Monitoring behavior, notification assignment, debounce, state backups and all
+  existing integrations remain unchanged. Stale monitors are not deleted.
+
 ## 2.0.1
 
 ### Added
