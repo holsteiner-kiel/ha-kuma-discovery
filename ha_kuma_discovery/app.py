@@ -17,6 +17,7 @@ from uptime_kuma_api import UptimeKumaApi
 
 import ha_client
 import kuma_monitor
+import push_state
 import state_store
 
 
@@ -172,21 +173,9 @@ ensure_ping_monitor = kuma_monitor.ensure_ping_monitor
 
 
 def push_status(kuma_url, monitor, up, message, verify_ssl):
-    with kuma_operation("Push heartbeat HTTP call"):
-        token = monitor.get("pushToken") or monitor.get("push_token")
-        if not token:
-            raise RuntimeError(f"Monitor '{monitor.get('name')}' has no push token")
-
-        r = HTTP.get(
-            f"{kuma_url}/api/push/{token}",
-            params={"status": "up" if up else "down", "msg": message[:250]},
-            timeout=20,
-            verify=verify_ssl,
-        )
-        r.raise_for_status()
-        payload = r.json()
-        if not payload.get("ok"):
-            raise RuntimeError(f"Push failed for '{monitor.get('name')}': {payload}")
+    return push_state.push_status(
+        kuma_url, monitor, up, message, verify_ssl, HTTP, kuma_operation
+    )
 
 
 def push_status_if_needed(
@@ -199,18 +188,18 @@ def push_status_if_needed(
     heartbeat_interval,
     sync_interval,
 ):
-    """Send every evaluated state; commit the successful heartbeat only after I/O.
-
-    Keep the existing call signature and persisted cache format compatible.
-    Callers must obtain a real observation before invoking this helper.
-    """
-    name = str(monitor.get("name") or monitor.get("id") or "unknown")
-    push_status(kuma_url, monitor, up, message, verify_ssl)
-    state.setdefault("_push_status_cache", {})[name] = {
-        "up": bool(up), "last_push": time.time(),
-    }
-    return True
-
+    return push_state.push_status_if_needed(
+        kuma_url,
+        monitor,
+        up,
+        message,
+        verify_ssl,
+        state,
+        heartbeat_interval,
+        sync_interval,
+        sender=push_status,
+        now=time.time,
+    )
 
 
 def _clean_shelly_name(name: str) -> str:
@@ -2645,33 +2634,7 @@ def discover_mqtt_physical_devices() -> Dict[str, list[Dict[str, Any]]]:
 
 
 
-def _push_effective_up(
-    state: Dict[str, Any],
-    state_key: str,
-    device_id: str,
-    observed_up: bool,
-    grace_cycles: int,
-) -> tuple[bool, int]:
-    """
-    Debounce Home Assistant state-based Push monitor DOWN transitions.
-
-    UP is reported immediately. DOWN is reported only after the configured
-    number of consecutive unavailable sync cycles. The counter is persisted
-    in the add-on state across sync cycles.
-    """
-    debounce = state.setdefault("_push_down_debounce", {})
-    bucket = debounce.setdefault(state_key, {})
-    entry = bucket.setdefault(device_id, {"down_cycles": 0})
-
-    if observed_up:
-        entry["down_cycles"] = 0
-        return True, 0
-
-    down_cycles = int(entry.get("down_cycles", 0)) + 1
-    entry["down_cycles"] = down_cycles
-
-    effective_up = down_cycles < grace_cycles
-    return effective_up, down_cycles
+_push_effective_up = push_state.push_effective_up
 
 
 def _sync_mqtt_device_list(
