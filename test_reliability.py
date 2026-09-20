@@ -185,6 +185,7 @@ class HeartbeatTests(unittest.TestCase):
             self.assertTrue(self.push(state, 1061, False))
             self.assertTrue(self.push(state, 1062, True))
             self.assertEqual(send.call_count, 5)
+            self.assertEqual(state['_push_status_cache']['device']['last_push'], 1062)
 
     def test_failed_push_does_not_advance_success_timestamp(self):
         state = {'_push_status_cache': {'device': {'up': True, 'last_push': 1000}}}
