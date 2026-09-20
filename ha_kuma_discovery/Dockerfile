@@ -17,6 +17,7 @@ COPY integration_e3dc.py /integration_e3dc.py
 COPY integration_fritz.py /integration_fritz.py
 COPY integration_fully_kiosk.py /integration_fully_kiosk.py
 COPY integration_homematic.py /integration_homematic.py
+COPY integration_hue.py /integration_hue.py
 COPY integration_matter.py /integration_matter.py
 COPY integration_overkiz.py /integration_overkiz.py
 COPY integration_shelly.py /integration_shelly.py
