@@ -16,6 +16,7 @@ import websocket
 from uptime_kuma_api import UptimeKumaApi
 
 import ha_client
+import integration_addons
 import kuma_monitor
 import push_state
 import state_store
@@ -358,49 +359,17 @@ def discover_shelly_devices() -> list[Dict[str, str]]:
     return result
 
 def sync_addons(opts, api, monitors, default_notification_ids, state):
-    addons = supervisor_get("/addons") or {}
-    addon_list = addons.get("addons", addons if isinstance(addons, list) else [])
-
-    discovered = []
-    for addon in addon_list:
-        slug = str(addon.get("slug", ""))
-        name = str(addon.get("name", slug))
-        if not slug:
-            continue
-        if slug in opts["ignore_slugs_set"]:
-            LOG.info("Ignoring %s (%s)", name, slug)
-            continue
-        if slug.endswith("_ha_kuma_discovery") or name == "HA Kuma Discovery":
-            continue
-        discovered.append(addon)
-
-    LOG.info("Supervisor returned %d monitored add-ons", len(discovered))
-
-    for addon in discovered:
-        slug = addon["slug"]
-        name = addon.get("name") or slug
-        status = str(addon.get("state") or "unknown").lower()
-        monitor_name = f'{opts["monitor_prefix"]}{name}'
-
-        monitor = ensure_push_monitor(
-            api, monitors, monitor_name,
-            opts["heartbeat_interval"], default_notification_ids,
-            state=state, identity=f'addon:{slug}',
-        )
-
-        up = status == "started"
-        push_status_if_needed(
-            opts["kuma_url"], monitor, up,
-            f"Supervisor state: {status} | slug: {slug}",
-            opts["verify_ssl"],
-            state,
-            opts["heartbeat_interval"],
-            opts["sync_interval"],
-        )
-        LOG.info("%s (%s) -> %s", monitor_name, slug, "UP" if up else "DOWN")
-
-    state["known_slugs"] = sorted(a["slug"] for a in discovered)
-    state["names"] = {a["slug"]: (a.get("name") or a["slug"]) for a in discovered}
+    integration_addons.sync(
+        opts,
+        api,
+        monitors,
+        default_notification_ids,
+        state,
+        supervisor_get,
+        ensure_push_monitor,
+        push_status_if_needed,
+        LOG,
+    )
 
 
 def sync_shelly(opts, api, monitors, default_notification_ids, state):
