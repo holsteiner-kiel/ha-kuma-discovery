@@ -4,7 +4,7 @@
 
 Home Assistant devices and infrastructure mirrored to Uptime Kuma.
 
-Current version: **2.0.1**. Based on the original 1.5.1 add-on. Supports amd64 and aarch64.
+Current version: **2.1.0**. Based on the original 1.5.1 add-on. Supports amd64 and aarch64.
 
 ## Installation
 
@@ -22,18 +22,22 @@ Install **HA Kuma Discovery**, set `kuma_url`, `kuma_username` and `kuma_passwor
 
 Keep a backup of the existing add-on configuration and data. A repository installation has a different add-on identity from a local installation; settings and `/data/state.json` are not migrated automatically. Stop the local copy before starting the repository copy, and verify the resulting Kuma monitors before removing the old installation.
 
-## Version 2.0.1
+## Version 2.1.0
 
 With the default settings, every successfully evaluated Push monitor sends its current state each cycle. Kuma retains its 180-second heartbeat window and DOWN requires three consecutive unavailable cycles. Recovery is reported immediately.
 
-Version 2.0.1 adds compact Kuma and per-integration timing diagnostics plus automated dependency update proposals. It retains the signed GHCR delivery and AirGradient monitoring introduced in 2.0.0. Existing configuration, monitors and state remain compatible. See the changelog for details.
+Version 2.1.0 stores a stable link between each Home Assistant source and its
+managed Kuma monitor. Later device or app/add-on renames update the same monitor
+instead of creating a duplicate. Existing installations learn these links from
+their current monitor names during the first successful sync. Configuration and
+monitoring behavior remain compatible. See the changelog for details.
 
 - [Configuration and operation](ha_kuma_discovery/DOCS.md)
 - [Changelog](ha_kuma_discovery/CHANGELOG.md)
 
 ## Validation
 
-GitHub Actions runs 52 behavior tests and five image-publication policy tests plus Python compilation, shell syntax, YAML metadata and native amd64/aarch64 container builds. These checks do not replace testing inside Home Assistant with a running Uptime Kuma instance.
+GitHub Actions runs 58 behavior tests and five image-publication policy tests plus Python compilation, shell syntax, YAML metadata and native amd64/aarch64 container builds. These checks do not replace testing inside Home Assistant with a running Uptime Kuma instance.
 
 ## License
 
