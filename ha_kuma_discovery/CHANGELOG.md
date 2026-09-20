@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- Log one compact per-cycle timing summary for every enabled integration.
+- Log successful durations for opening the Kuma session, authentication and the
+  initial monitor/notification fetches without exposing URLs or credentials.
+
 ## 2.0.0
 
 ### Changed

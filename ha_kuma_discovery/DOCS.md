@@ -78,6 +78,9 @@ still use the existing three-cycle grace and UP recovery remains immediate.
 monitor/notification fetching, monitor creation/update or the Push HTTP call.
 These messages deliberately omit exception text, request URLs and credentials.
 The ordinary integration/global failure summary follows the stage diagnostic.
+Successful cycles also log the duration of session opening, login and the initial
+Kuma reads, followed by one compact timing summary for all enabled integrations.
+This makes slow stages visible without logging Push URLs, tokens or credentials.
 
 ## Homematic IP physical devices in 1.6.0
 
