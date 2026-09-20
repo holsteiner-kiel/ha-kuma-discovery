@@ -16,6 +16,7 @@ COPY integration_addons.py /integration_addons.py
 COPY integration_fritz.py /integration_fritz.py
 COPY integration_fully_kiosk.py /integration_fully_kiosk.py
 COPY integration_homematic.py /integration_homematic.py
+COPY integration_matter.py /integration_matter.py
 COPY integration_shelly.py /integration_shelly.py
 COPY integration_unifi.py /integration_unifi.py
 COPY kuma_monitor.py /kuma_monitor.py
