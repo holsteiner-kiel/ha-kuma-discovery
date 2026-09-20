@@ -1,4 +1,4 @@
-# HA Kuma Discovery 2.0.1
+# HA Kuma Discovery 2.1.0
 
 Home Assistant infrastructure and physical devices mirrored to Uptime Kuma.
 
@@ -16,6 +16,19 @@ Existing repository installations can update from 1.5.1, 1.5.2 or 1.6.0 through 
 Configuration and the state format remain compatible. Create a Home Assistant
 backup before updating. Only one discovery instance should run against the same
 managed Kuma monitors.
+
+## Stable monitor identities in 2.1.0
+
+After a managed Ping or Push monitor is found or created successfully, the app
+stores its Kuma monitor ID together with the stable Home Assistant source ID.
+Later Home Assistant name changes update that same Kuma monitor. The existing
+host, interval, retry and default-notification reconciliation continues to apply.
+
+On the first successful 2.1.0 sync, existing installations associate sources with
+their current same-name monitors automatically. A device that was already renamed
+before this first sync cannot always be matched to its old Kuma monitor and may
+need a one-time manual rename in Kuma. The app does not guess such associations
+and never deletes stale monitors automatically.
 
 ## Heartbeat behavior
 
@@ -61,7 +74,7 @@ requests. Error summaries omit exception text to avoid exposing secret Push URLs
 - `Sync cycle took ...`: if cycles approach the heartbeat window, inspect slow or
   failing integrations and network connections.
 
-Version 2.0.1 has 52 automated behavior tests plus five image-policy tests. A live HA installation test remains
+Version 2.1.0 has 58 automated behavior tests plus five image-policy tests. A live HA installation test remains
 necessary after updating; the test suite does not replace that check.
 
 ## Push reliability and Kuma diagnostics in 1.6.0
@@ -130,10 +143,10 @@ airgradient_max_retries: 2
 airgradient_monitor_prefix: "AirGradient: "
 ```
 
-Existing same-name Ping monitors are reused and their hosts updated when HA
-changes the address. Default notification assignment follows the other Ping
-integrations. As elsewhere, renaming a device can leave an old monitor for manual
-review; the app does not delete monitors. Keep user-assigned device names unique.
+Existing Ping monitors are reused and their hosts updated when HA changes the
+address. From 2.1.0 onward, later device renames update the same monitor through
+its stored source identity. Default notification assignment follows the other
+Ping integrations, and the app does not delete monitors.
 
 Sources: [native entry host](https://github.com/home-assistant/core/blob/dev/homeassistant/components/airgradient/config_flow.py)
 and [physical registry identifiers](https://github.com/home-assistant/core/blob/dev/homeassistant/components/airgradient/entity.py).
