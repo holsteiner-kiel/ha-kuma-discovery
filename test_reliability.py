@@ -2,6 +2,7 @@
 import importlib.util
 import json
 from pathlib import Path
+import sys
 import tempfile
 import threading
 import unittest
@@ -9,9 +10,9 @@ from contextlib import ExitStack
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from unittest.mock import Mock, patch
 
-spec = importlib.util.spec_from_file_location(
-    "discovery", Path(__file__).parent / "ha_kuma_discovery" / "app.py"
-)
+APP_DIRECTORY = Path(__file__).parent / "ha_kuma_discovery"
+sys.path.insert(0, str(APP_DIRECTORY))
+spec = importlib.util.spec_from_file_location("discovery", APP_DIRECTORY / "app.py")
 app = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(app)
 
