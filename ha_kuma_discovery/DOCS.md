@@ -1,4 +1,4 @@
-# HA Kuma Discovery 2.0.0
+# HA Kuma Discovery 2.0.1
 
 Home Assistant infrastructure and physical devices mirrored to Uptime Kuma.
 
@@ -61,7 +61,7 @@ requests. Error summaries omit exception text to avoid exposing secret Push URLs
 - `Sync cycle took ...`: if cycles approach the heartbeat window, inspect slow or
   failing integrations and network connections.
 
-Version 2.0.0 has 50 automated behavior tests plus five image-policy tests. A live HA installation test remains
+Version 2.0.1 has 52 automated behavior tests plus five image-policy tests. A live HA installation test remains
 necessary after updating; the test suite does not replace that check.
 
 ## Push reliability and Kuma diagnostics in 1.6.0
