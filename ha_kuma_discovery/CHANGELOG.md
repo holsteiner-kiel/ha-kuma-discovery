@@ -1,11 +1,15 @@
 # Changelog
 
-## Unreleased
+## 2.0.1
 
 ### Added
 - Log one compact per-cycle timing summary for every enabled integration.
 - Log successful durations for opening the Kuma session, authentication and the
   initial monitor/notification fetches without exposing URLs or credentials.
+
+### Maintenance
+- Add weekly Dependabot proposals for GitHub Actions and the Home Assistant
+  container base; all proposed updates still require the existing validation.
 
 ## 2.0.0
 

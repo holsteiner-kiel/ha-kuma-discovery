@@ -3706,7 +3706,7 @@ def _run():
         level=logging.INFO,
         format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
     )
-    LOG.info("Starting HA Kuma Discovery 2.0.0")
+    LOG.info("Starting HA Kuma Discovery 2.0.1")
 
     while True:
         started = time.monotonic()
