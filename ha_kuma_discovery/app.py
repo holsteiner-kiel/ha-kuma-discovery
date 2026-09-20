@@ -6,7 +6,6 @@ import os
 import re
 import time
 import ipaddress
-import tempfile
 from contextlib import contextmanager, ExitStack
 from pathlib import Path
 from typing import Dict, Any
@@ -15,6 +14,8 @@ from urllib.parse import urljoin, urlparse
 import requests
 import websocket
 from uptime_kuma_api import UptimeKumaApi, MonitorType
+
+import state_store
 
 
 OPTIONS = Path("/data/options.json")
@@ -120,62 +121,12 @@ def read_options() -> Dict[str, Any]:
     return data
 
 
-def _read_state_file(path: Path) -> Dict[str, Any]:
-    data = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(data, dict):
-        raise ValueError("State must be a JSON object")
-    return data
-
-
 def load_state() -> Dict[str, Any]:
-    for path in (STATE, STATE.with_suffix(".json.bak")):
-        try:
-            data = _read_state_file(path)
-        except FileNotFoundError:
-            continue
-        except (OSError, ValueError) as exc:
-            LOG.warning("Cannot read state file %s (%s)", path.name, type(exc).__name__)
-            continue
-        if path != STATE:
-            LOG.warning("Recovered state from backup %s", path.name)
-        return data
-    LOG.warning("No usable saved state; starting with empty state")
-    return {"known_slugs": [], "known_shelly_device_ids": []}
-
-
-def _atomic_write(path: Path, content: str) -> None:
-    # Same directory keeps os.replace on the same filesystem.
-    temp_path = None
-    try:
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", dir=path.parent,
-            prefix=path.name + ".", suffix=".tmp", delete=False,
-        ) as f:
-            temp_path = Path(f.name)
-            f.write(content)
-            f.flush()
-            os.fsync(f.fileno())
-        os.replace(temp_path, path)
-    finally:
-        if temp_path is not None:
-            temp_path.unlink(missing_ok=True)
+    return state_store.load_state(STATE, LOG)
 
 
 def save_state(state: Dict[str, Any]) -> None:
-    if not isinstance(state, dict):
-        raise ValueError("State must be a JSON object")
-    content = json.dumps(state, indent=2, sort_keys=True)
-    # Never replace a valid backup with a corrupt primary file.
-    try:
-        previous = _read_state_file(STATE)
-    except FileNotFoundError:
-        previous = None
-    except (OSError, ValueError) as exc:
-        LOG.warning("Skipping backup of unreadable state (%s)", type(exc).__name__)
-        previous = None
-    if previous is not None:
-        _atomic_write(STATE.with_suffix(".json.bak"), json.dumps(previous, indent=2, sort_keys=True))
-    _atomic_write(STATE, content)
+    state_store.save_state(state, STATE, LOG)
 
 
 def supervisor_get(path: str) -> Any:

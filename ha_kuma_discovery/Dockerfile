@@ -11,6 +11,7 @@ RUN apk add --no-cache python3 py3-pip ca-certificates \
 
 COPY run.sh /run.sh
 COPY app.py /app.py
+COPY state_store.py /state_store.py
 
 RUN chmod a+x /run.sh
 
