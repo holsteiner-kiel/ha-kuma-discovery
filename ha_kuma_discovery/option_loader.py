@@ -24,7 +24,7 @@ def load_options(options_path: Path) -> Dict[str, Any]:
     for name in (
         "shelly", "unifi", "fritz", "fully_kiosk", "homematic_ip", "e3dc",
         "overkiz", "hue", "smlight", "stiebel_eltron", "synology",
-        "airgradient", "esphome",
+        "airgradient", "homeconnect_local", "ecovacs", "esphome",
     ):
         data[f"{name}_ping_interval"] = max(
             20, int(data.get(f"{name}_ping_interval", 60))
@@ -35,6 +35,9 @@ def load_options(options_path: Path) -> Dict[str, Any]:
 
     prefixes = {
         "airgradient_monitor_prefix": "AirGradient: ",
+        "homeconnect_local_monitor_prefix": "Home Connect Local: ",
+        "homeconnect_monitor_prefix": "Home Connect: ",
+        "ecovacs_monitor_prefix": "Ecovacs: ",
         "monitor_prefix": "HA Add-on: ",
         "shelly_monitor_prefix": "Shelly: ",
         "unifi_monitor_prefix": "UniFi: ",
@@ -77,11 +80,20 @@ def load_options(options_path: Path) -> Dict[str, Any]:
         "discover_synology_dsm": True,
         "discover_esphome_devices": True,
         "discover_airgradient_devices": True,
+        "discover_homeconnect_local_devices": True,
+        "discover_homeconnect_cloud_devices": True,
+        "discover_ecovacs_devices": True,
         "discover_zigbee2mqtt_devices": True,
         "discover_mqtt_devices": True,
     }
     for name, default in defaults.items():
         data[name] = bool(data.get(name, default))
+
+    data["ecovacs_ignore_set"] = {
+        value.strip().lower()
+        for value in str(data.get("ecovacs_ignore", "")).split(",")
+        if value.strip()
+    }
 
     data["ignore_slugs_set"] = {
         value.strip()

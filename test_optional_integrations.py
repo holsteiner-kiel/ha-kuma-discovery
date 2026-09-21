@@ -13,7 +13,8 @@ DISCOVERY = [
     'discover_homematic_ip_infrastructure', 'discover_matter_devices',
     'discover_e3dc_devices', 'discover_overkiz_devices', 'discover_hue',
     'discover_smlight_devices', 'discover_stiebel_eltron',
-    'discover_synology_dsm', 'discover_esphome_devices', 'discover_mqtt_physical_devices',
+    'discover_synology_dsm', 'discover_esphome_devices', 'discover_home_connect_local',
+    'discover_home_connect_cloud', 'discover_ecovacs_devices', 'discover_mqtt_physical_devices',
 ]
 
 

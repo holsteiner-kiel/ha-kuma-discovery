@@ -1,4 +1,4 @@
-# HA Kuma Discovery 2.2.0
+# HA Kuma Discovery 2.2.1
 
 Home Assistant infrastructure and physical devices mirrored to Uptime Kuma.
 
@@ -74,7 +74,7 @@ requests. Error summaries omit exception text to avoid exposing secret Push URLs
 - `Sync cycle took ...`: if cycles approach the heartbeat window, inspect slow or
   failing integrations and network connections.
 
-Version 2.2.0 has 108 automated tests. A live HA installation test remains
+Version 2.2.1 adds Home Connect and Ecovacs discovery coverage to the automated tests. A live HA installation test remains
 necessary after updating; the test suite does not replace that check.
 
 ## Push reliability and Kuma diagnostics in 1.6.0
@@ -125,6 +125,35 @@ they do not create monitors or report a failed integration. Empty host lookups
 also avoid touching HA config-entry storage or warning about a missing mount.
 Malformed responses and API failures still follow integration fault isolation;
 they are not silently interpreted as an absent integration.
+
+## Home Connect and Ecovacs in 2.2.1
+
+Home Connect Local (`homeconnect_ws`) creates one `Home Connect Local: ` Ping
+monitor per physical appliance using only its own config-entry `data.host`.
+When Local and Cloud describe the same appliance through the same native
+identifier, Local wins and no duplicate Cloud monitor is created. A missing or
+invalid Local host is skipped safely.
+
+Home Connect Cloud (`home_connect`) creates a `Home Connect: ` Push monitor only
+for an enabled native Connectivity binary sensor. It uses the integration's
+connectivity metadata and identifier semantics, never a localized entity name.
+`on` is UP; `off`, `unavailable`, and `unknown` follow the normal three-cycle
+DOWN grace. Recovery is immediate.
+
+Ecovacs uses its own `network_ip` diagnostic entity to create one `Ecovacs: `
+Ping monitor per physical device. Enable the **IP Address** diagnostic entity in
+Home Assistant first. If it is disabled, the add-on logs a warning every cycle
+and does not create a monitor. An unavailable or invalid IP is also skipped with
+a warning. To deliberately exclude a device and suppress those warnings, list
+its stable Ecovacs identifier in the comma-separated option:
+
+```yaml
+ecovacs_ignore: "fca5d9bc-05e5-4b21-b9c8-e2a3219cab8c"
+```
+
+These integrations never retrieve device IPs through UniFi, FRITZ!, router, MAC
+or other unrelated integrations. Navimow and Roborock remain intentionally
+unsupported because they do not provide a robust native liveness source.
 
 ## AirGradient in 2.0.0
 

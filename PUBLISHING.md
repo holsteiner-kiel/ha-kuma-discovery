@@ -1,7 +1,7 @@
 # Container publishing
 
 Home Assistant uses `image` plus the exact `config.yaml` version, for example
-`ghcr.io/holsteiner-kiel/ha-kuma-discovery:2.2.0`. No `latest` tag is required or
+`ghcr.io/holsteiner-kiel/ha-kuma-discovery:2.2.1`. No `latest` tag is required or
 published. Do not put `:v<version>`, `:latest` or `{arch}` in the app's image field.
 
 ## Workflow

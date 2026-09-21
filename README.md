@@ -4,7 +4,7 @@
 
 Home Assistant devices and infrastructure mirrored to Uptime Kuma.
 
-Current version: **2.2.0**. Based on the original 1.5.1 add-on. Supports amd64 and aarch64.
+Current version: **2.2.1**. Based on the original 1.5.1 add-on. Supports amd64 and aarch64.
 
 ## Installation
 
@@ -21,6 +21,18 @@ Install **HA Kuma Discovery**, set `kuma_url`, `kuma_username` and `kuma_passwor
 ## Existing local installation
 
 Keep a backup of the existing add-on configuration and data. A repository installation has a different add-on identity from a local installation; settings and `/data/state.json` are not migrated automatically. Stop the local copy before starting the repository copy, and verify the resulting Kuma monitors before removing the old installation.
+
+## Version 2.2.1
+
+Home Connect Local appliances use their own configured local host for Ping. If
+an appliance is also available through Home Connect Cloud, the Local monitor
+wins. Cloud-only appliances use their enabled native Connectivity binary sensor
+as a Push monitor.
+
+Ecovacs devices use only their enabled native **IP Address** diagnostic entity
+for Ping. Enable that entity in Home Assistant to monitor the device; use
+`ecovacs_ignore` to silence intentionally unmonitorable devices. Device IPs are
+never resolved through UniFi, FRITZ! or other unrelated integrations.
 
 ## Version 2.2.0
 

@@ -1,5 +1,28 @@
 # Changelog
 
+## 2.2.1
+
+### Added
+- Discover Home Connect Local appliances through their own `homeconnect_ws`
+  config-entry host and monitor them with Ping.
+- Discover Cloud-only Home Connect appliances through their enabled native
+  Connectivity binary sensor and monitor them with Push.
+- Discover Ecovacs devices through the enabled native `network_ip` diagnostic
+  entity and add the comma-separated stable-ID option `ecovacs_ignore`.
+
+### Improved
+- Prefer Home Connect Local when the same stable appliance identifier exists in
+  both Local and Cloud, preventing duplicate monitors.
+- Keep all new discovery paths optional and isolated; absent integrations are
+  normal no-ops. Disabled or invalid Ecovacs IP diagnostics produce a visible,
+  non-critical warning without creating a monitor.
+- Never derive Home Connect or Ecovacs device addresses through UniFi, FRITZ!,
+  router or other unrelated integrations.
+
+### Compatibility
+- Existing monitor names, notifications, state persistence, Push heartbeat,
+  three-cycle DOWN debounce and immediate recovery remain unchanged.
+
 ## 2.2.0
 
 ### Changed
