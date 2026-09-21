@@ -152,4 +152,30 @@ ecovacs_ignore: "fca5d9bc-05e5-4b21-b9c8-e2a3219cab8c"
 ```
 
 These integrations never retrieve device IPs through UniFi, FRITZ!, router, MAC
-or other unrelated in}tÛﬁm¢Gß≤⁄Óù∆≠yŸ]öXŸV»ö‹›ó_CBàõ‹à]öXŸH[àX[òYŸYCB
+or other unrelated integrations. Navimow and Roborock remain intentionally
+unsupported because they do not provide a robust native liveness source.
+
+## AirGradient in 2.0.0
+
+Native Home Assistant AirGradient devices receive one Ping monitor each using
+the integration's explicit `data.host` (read from HA storage when the WebSocket
+entry omits it). The physical device's HA name is used with `AirGradient: `.
+Without a name, the entry title and native serial identify the device; duplicate
+names are serial-qualified. No address is derived from entity names or guessed.
+Missing/invalid hosts are skipped with an informational message. An absent
+integration or empty device registry is a normal no-op, even when enabled.
+
+```yaml
+discover_airgradient_devices: true
+airgradient_ping_interval: 60
+airgradient_max_retries: 2
+airgradient_monitor_prefix: "AirGradient: "
+```
+
+Existing Ping monitors are reused and their hosts updated when HA changes the
+address. From 2.1.0 onward, later device renames update the same monitor through
+its stored source identity. Default notification assignment follows the other
+Ping integrations, and the app does not delete monitors.
+
+Sources: [native entry host](https://github.com/home-assistant/core/blob/dev/homeassistant/components/airgradient/config_flow.py)
+and [physical registry identifiers](https://github.com/home-assistant/core/blob/dev/homeassistant/components/airgradient/entity.py).
