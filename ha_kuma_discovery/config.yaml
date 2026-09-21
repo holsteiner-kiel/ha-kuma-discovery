@@ -1,5 +1,5 @@
 name: "HA Kuma Discovery"
-version: "2.2.0"
+version: "2.2.1"
 slug: "ha_kuma_discovery"
 url: "https://github.com/holsteiner-kiel/ha-kuma-discovery"
 image: "ghcr.io/holsteiner-kiel/ha-kuma-discovery"
@@ -42,6 +42,19 @@ options:
   airgradient_ping_interval: 60
   airgradient_max_retries: 2
   airgradient_monitor_prefix: "AirGradient: "
+
+  discover_homeconnect_local_devices: true
+  homeconnect_local_ping_interval: 60
+  homeconnect_local_max_retries: 2
+  homeconnect_local_monitor_prefix: "Home Connect Local: "
+  discover_homeconnect_cloud_devices: true
+  homeconnect_monitor_prefix: "Home Connect: "
+
+  discover_ecovacs_devices: true
+  ecovacs_ping_interval: 60
+  ecovacs_max_retries: 2
+  ecovacs_monitor_prefix: "Ecovacs: "
+  ecovacs_ignore: ""
 
   discover_esphome_devices: true
   discover_zigbee2mqtt_devices: true
@@ -118,6 +131,19 @@ schema:
   airgradient_ping_interval: int
   airgradient_max_retries: int
   airgradient_monitor_prefix: str
+
+  discover_homeconnect_local_devices: bool
+  homeconnect_local_ping_interval: int
+  homeconnect_local_max_retries: int
+  homeconnect_local_monitor_prefix: str
+  discover_homeconnect_cloud_devices: bool
+  homeconnect_monitor_prefix: str
+
+  discover_ecovacs_devices: bool
+  ecovacs_ping_interval: int
+  ecovacs_max_retries: int
+  ecovacs_monitor_prefix: str
+  ecovacs_ignore: str
 
   discover_esphome_devices: bool
   discover_zigbee2mqtt_devices: bool

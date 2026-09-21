@@ -19,6 +19,8 @@ COPY integration_esphome.py /integration_esphome.py
 COPY integration_fritz.py /integration_fritz.py
 COPY integration_fully_kiosk.py /integration_fully_kiosk.py
 COPY integration_homematic.py /integration_homematic.py
+COPY integration_home_connect.py /integration_home_connect.py
+COPY integration_ecovacs.py /integration_ecovacs.py
 COPY integration_hue.py /integration_hue.py
 COPY integration_matter.py /integration_matter.py
 COPY integration_mqtt.py /integration_mqtt.py

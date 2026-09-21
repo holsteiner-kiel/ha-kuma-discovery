@@ -19,6 +19,8 @@ import integration_esphome
 import integration_fritz
 import integration_fully_kiosk
 import integration_homematic
+import integration_home_connect
+import integration_ecovacs
 import integration_hue
 import integration_matter
 import integration_mqtt
@@ -36,7 +38,7 @@ import state_store
 
 OPTIONS = Path("/data/options.json")
 STATE = Path("/data/state.json")
-APP_VERSION = "2.2.0"
+APP_VERSION = "2.2.1"
 SUPERVISOR = "http://supervisor/"
 HA_WS = "ws://supervisor/core/websocket"
 HA_CONFIG_ENTRIES = Path("/homeassistant/.storage/core.config_entries")
@@ -395,6 +397,43 @@ def sync_airgradient_devices(opts, api, monitors, default_notification_ids, stat
     )
 
 
+def discover_home_connect_local():
+    return integration_home_connect.discover_home_connect_local(HAWebSocket, LOG)
+
+
+def sync_home_connect_local(opts, api, monitors, default_notification_ids, state):
+    integration_home_connect.sync_home_connect_local(
+        opts, api, monitors, default_notification_ids, state,
+        discover_home_connect_local, ensure_ping_monitor, LOG,
+    )
+
+
+def discover_home_connect_cloud():
+    local = discover_home_connect_local()
+    return integration_home_connect.discover_home_connect_cloud(
+        HAWebSocket, LOG, local.get("appliance_ids") or set(),
+    )
+
+
+def sync_home_connect_cloud(opts, api, monitors, default_notification_ids, state):
+    integration_home_connect.sync_home_connect_cloud(
+        opts, api, monitors, default_notification_ids, state,
+        discover_home_connect_cloud, ensure_push_monitor, _push_effective_up,
+        push_status_if_needed, LOG,
+    )
+
+
+def discover_ecovacs_devices():
+    return integration_ecovacs.discover_ecovacs_devices(HAWebSocket, LOG)
+
+
+def sync_ecovacs_devices(opts, api, monitors, default_notification_ids, state):
+    integration_ecovacs.sync_ecovacs_devices(
+        opts, api, monitors, default_notification_ids, state,
+        discover_ecovacs_devices, ensure_ping_monitor, LOG,
+    )
+
+
 _entity_domain = ha_client.entity_domain
 _state_ip = ha_client.state_ip
 _normalize_mac = ha_client.normalize_mac
@@ -470,6 +509,9 @@ def sync_once(opts):
                 (opts["discover_synology_dsm"], sync_synology_dsm),
                 (opts["discover_esphome_devices"], sync_esphome_devices),
                 (opts["discover_airgradient_devices"], sync_airgradient_devices),
+                (opts["discover_homeconnect_local_devices"], sync_home_connect_local),
+                (opts["discover_homeconnect_cloud_devices"], sync_home_connect_cloud),
+                (opts["discover_ecovacs_devices"], sync_ecovacs_devices),
                 (opts["discover_zigbee2mqtt_devices"] or opts["discover_mqtt_devices"], sync_mqtt_devices),
             ]
             failed = []
