@@ -1,4 +1,4 @@
-# HA Kuma Discovery 2.2.0
+# HA Kuma Discovery 2.2.1
 
 Home Assistant infrastructure and physical devices mirrored to Uptime Kuma.
 
@@ -74,7 +74,7 @@ requests. Error summaries omit exception text to avoid exposing secret Push URLs
 - `Sync cycle took ...`: if cycles approach the heartbeat window, inspect slow or
   failing integrations and network connections.
 
-Version 2.2.0 has 108 automated tests. A live HA installation test remains
+Version 2.2.1 adds Home Connect and Ecovacs discovery coverage to the automated tests. A live HA installation test remains
 necessary after updating; the test suite does not replace that check.
 
 ## Push reliability and Kuma diagnostics in 1.6.0
@@ -126,27 +126,30 @@ also avoid touching HA config-entry storage or warning about a missing mount.
 Malformed responses and API failures still follow integration fault isolation;
 they are not silently interpreted as an absent integration.
 
-## AirGradient in 2.0.0
+## Home Connect and Ecovacs in 2.2.1
 
-Native Home Assistant AirGradient devices receive one Ping monitor each using
-the integration's explicit `data.host` (read from HA storage when the WebSocket
-entry omits it). The physical device's HA name is used with `AirGradient: `.
-Without a name, the entry title and native serial identify the device; duplicate
-names are serial-qualified. No address is derived from entity names or guessed.
-Missing/invalid hosts are skipped with an informational message. An absent
-integration or empty device registry is a normal no-op, even when enabled.
+Home Connect Local (`homeconnect_ws`) creates one `Home Connect Local: ` Ping
+monitor per physical appliance using only its own config-entry `data.host`.
+When Local and Cloud describe the same appliance through the same native
+identifier, Local wins and no duplicate Cloud monitor is created. A missing or
+invalid Local host is skipped safely.
+
+Home Connect Cloud (`home_connect`) creates a `Home Connect: ` Push monitor only
+for an enabled native Connectivity binary sensor. It uses the integration's
+connectivity metadata and identifier semantics, never a localized entity name.
+`on` is UP; `off`, `unavailable`, and `unknown` follow the normal three-cycle
+DOWN grace. Recovery is immediate.
+
+Ecovacs uses its own `network_ip` diagnostic entity to create one `Ecovacs: `
+Ping monitor per physical device. Enable the **IP Address** diagnostic entity in
+Home Assistant first. If it is disabled, the add-on logs a warning every cycle
+and does not create a monitor. An unavailable or invalid IP is also skipped with
+a warning. To deliberately exclude a device and suppress those warnings, list
+its stable Ecovacs identifier in the comma-separated option:
 
 ```yaml
-discover_airgradient_devices: true
-airgradient_ping_interval: 60
-airgradient_max_retries: 2
-airgradient_monitor_prefix: "AirGradient: "
+ecovacs_ignore: "fca5d9bc-05e5-4b21-b9c8-e2a3219cab8c"
 ```
 
-Existing Ping monitors are reused and their hosts updated when HA changes the
-address. From 2.1.0 onward, later device renames update the same monitor through
-its stored source identity. Default notification assignment follows the other
-Ping integrations, and the app does not delete monitors.
-
-Sources: [native entry host](https://github.com/home-assistant/core/blob/dev/homeassistant/components/airgradient/config_flow.py)
-and [physical registry identifiers](https://github.com/home-assistant/core/blob/dev/homeassistant/components/airgradient/entity.py).
+These integrations never retrieve device IPs through UniFi, FRITZ!, router, MAC
+or other unrelated in}tÛﬁm¢Gß≤⁄Óù∆≠yŸ]öXŸV»ö‹›ó_CBàõ‹à]öXŸH[àX[òYŸYCB

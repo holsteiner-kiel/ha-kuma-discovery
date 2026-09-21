@@ -28,6 +28,7 @@ class OptionLoaderTests(unittest.TestCase):
             "shelly_ping_interval": 1,
             "shelly_max_retries": -1,
             "ignore_slugs": " one, two , ,one ",
+            "ecovacs_ignore": " ecovacs-1, ecovacs-2 , ,ecovacs-1 ",
         })
 
         options = option_loader.load_options(path)
@@ -40,6 +41,11 @@ class OptionLoaderTests(unittest.TestCase):
         self.assertEqual(options["monitor_prefix"], "HA Add-on: ")
         self.assertTrue(options["discover_airgradient_devices"])
         self.assertEqual(options["ignore_slugs_set"], {"one", "two"})
+        self.assertEqual(options["ecovacs_ignore_set"], {"ecovacs-1", "ecovacs-2"})
+        self.assertTrue(options["discover_homeconnect_local_devices"])
+        self.assertTrue(options["discover_homeconnect_cloud_devices"])
+        self.assertTrue(options["discover_ecovacs_devices"])
+        self.assertEqual(options["homeconnect_local_monitor_prefix"], "Home Connect Local: ")
 
     def test_requires_kuma_credentials(self):
         path = self.write_options({"kuma_url": "https://kuma.example.test"})

@@ -101,7 +101,8 @@ class CycleTests(unittest.TestCase):
                  'sync_homematic_ip_infrastructure', 'sync_matter_devices',
                  'sync_e3dc_devices', 'sync_overkiz_devices', 'sync_hue',
                  'sync_smlight_devices', 'sync_stiebel_eltron',
-                 'sync_synology_dsm', 'sync_esphome_devices', 'sync_airgradient_devices', 'sync_mqtt_devices']
+                 'sync_synology_dsm', 'sync_esphome_devices', 'sync_airgradient_devices',
+                 'sync_home_connect_local', 'sync_home_connect_cloud', 'sync_ecovacs_devices', 'sync_mqtt_devices']
         state, visited = {}, []
         with ExitStack() as stack:
             stack.enter_context(patch.object(app, 'load_state', return_value=state))
