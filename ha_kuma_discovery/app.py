@@ -36,6 +36,7 @@ import state_store
 
 OPTIONS = Path("/data/options.json")
 STATE = Path("/data/state.json")
+APP_VERSION = "2.2.0"
 SUPERVISOR = "http://supervisor/"
 HA_WS = "ws://supervisor/core/websocket"
 HA_CONFIG_ENTRIES = Path("/homeassistant/.storage/core.config_entries")
@@ -511,7 +512,7 @@ def _run():
         level=logging.INFO,
         format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
     )
-    LOG.info("Starting HA Kuma Discovery 2.0.1")
+    LOG.info("Starting HA Kuma Discovery %s", APP_VERSION)
 
     while True:
         started = time.monotonic()

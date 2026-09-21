@@ -1,4 +1,4 @@
-# HA Kuma Discovery 2.1.0
+# HA Kuma Discovery 2.2.0
 
 Home Assistant infrastructure and physical devices mirrored to Uptime Kuma.
 
@@ -17,7 +17,7 @@ Configuration and the state format remain compatible. Create a Home Assistant
 backup before updating. Only one discovery instance should run against the same
 managed Kuma monitors.
 
-## Stable monitor identities in 2.1.0
+## Stable monitor identities since 2.1.0
 
 After a managed Ping or Push monitor is found or created successfully, the app
 stores its Kuma monitor ID together with the stable Home Assistant source ID.
@@ -74,7 +74,7 @@ requests. Error summaries omit exception text to avoid exposing secret Push URLs
 - `Sync cycle took ...`: if cycles approach the heartbeat window, inspect slow or
   failing integrations and network connections.
 
-Version 2.1.0 has 58 automated behavior tests plus five image-policy tests. A live HA installation test remains
+Version 2.2.0 has 108 automated tests. A live HA installation test remains
 necessary after updating; the test suite does not replace that check.
 
 ## Push reliability and Kuma diagnostics in 1.6.0
