@@ -31,7 +31,8 @@ class HomeConnectTests(unittest.TestCase):
             self.states.append({"entity_id": "binary_sensor." + serial, "state": state})
 
     def discover_local(self):
-        with patch.object(app, "HAWebSocket") as ws:
+        with patch.object(app, "HAWebSocket") as ws, \
+             patch.object(app, "_config_entry_hosts_from_storage", return_value={}):
             def call(command):
                 if command["type"] == "config_entries/get":
                     return self.local_entries
@@ -76,6 +77,15 @@ class HomeConnectTests(unittest.TestCase):
                 with self.assertLogs(app.LOG, level="INFO") as logs:
                     self.assertEqual(self.discover_local()["devices"], [])
                 self.assertNotIn("secret", "\n".join(logs.output))
+
+    def test_local_host_falls_back_to_matching_config_entry_storage(self):
+        self.local(host="")
+        with patch.object(app, "HAWebSocket") as ws, \
+             patch.object(app, "_config_entry_hosts_from_storage", return_value={"local-serial-1": "192.168.20.10"}) as hosts:
+            ws.return_value.__enter__.return_value.call.side_effect = lambda command: self.local_entries if command["type"] == "config_entries/get" else self.devices
+            devices = app.discover_home_connect_local()["devices"]
+        self.assertEqual(devices[0]["host"], "192.168.20.10")
+        hosts.assert_called_once_with("homeconnect_ws", {"local-serial-1"})
 
     def test_cloud_connectivity_states_and_missing_entity(self):
         self.cloud(state="on")

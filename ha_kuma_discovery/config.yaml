@@ -1,5 +1,5 @@
 name: "HA Kuma Discovery"
-version: "2.2.1"
+version: "2.2.2"
 slug: "ha_kuma_discovery"
 url: "https://github.com/holsteiner-kiel/ha-kuma-discovery"
 image: "ghcr.io/holsteiner-kiel/ha-kuma-discovery"
