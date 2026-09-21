@@ -21,6 +21,7 @@ COPY integration_fully_kiosk.py /integration_fully_kiosk.py
 COPY integration_homematic.py /integration_homematic.py
 COPY integration_hue.py /integration_hue.py
 COPY integration_matter.py /integration_matter.py
+COPY integration_mqtt.py /integration_mqtt.py
 COPY integration_overkiz.py /integration_overkiz.py
 COPY integration_shelly.py /integration_shelly.py
 COPY integration_smlight.py /integration_smlight.py
