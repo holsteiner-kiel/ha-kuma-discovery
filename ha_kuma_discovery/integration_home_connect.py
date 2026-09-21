@@ -60,7 +60,9 @@ def _name(device: Dict[str, Any], fallback: str) -> str:
     ).strip()
 
 
-def discover_home_connect_local(ha_websocket, log) -> Dict[str, Any]:
+def discover_home_connect_local(
+    ha_websocket, config_entry_hosts_from_storage, log,
+) -> Dict[str, Any]:
     """Discover local appliances directly from their ``homeconnect_ws`` entries."""
     with ha_websocket() as ha:
         entries = ha.call({"type": "config_entries/get", "domain": "homeconnect_ws"}) or []
@@ -69,6 +71,9 @@ def discover_home_connect_local(ha_websocket, log) -> Dict[str, Any]:
         devices = ha.call({"type": "config/device_registry/list"}) or []
 
     entry_by_id = {str(entry["entry_id"]): entry for entry in entries if entry.get("entry_id")}
+    # WebSocket config entries redact private data. Read only data.host for
+    # matching Home Connect Local entries from read-only HA storage.
+    storage_hosts = config_entry_hosts_from_storage("homeconnect_ws", set(entry_by_id))
     device_by_entry = {}
     for device in devices:
         if device.get("entry_type") is not None or device.get("disabled_by") is not None:
@@ -86,7 +91,9 @@ def discover_home_connect_local(ha_websocket, log) -> Dict[str, Any]:
         if stable_id in seen:
             continue
         seen.add(stable_id)
-        host = _valid_local_host((entry.get("data") or {}).get("host"))
+        host = _valid_local_host(
+            (entry.get("data") or {}).get("host") or storage_hosts.get(entry_id)
+        )
         if not host:
             log.info("Skipping Home Connect Local appliance %s: no usable data.host", stable_id)
             continue

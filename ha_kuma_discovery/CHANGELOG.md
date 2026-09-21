@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.2.2
+
+### Fixed
+- Restore Home Connect Local Ping discovery by reading only the matching native `data.host` record from read-only Home Assistant config-entry storage when the WebSocket response redacts it. No PSK is exposed or logged.
+
+
 ## 2.2.1
 
 ### Added

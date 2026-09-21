@@ -38,7 +38,7 @@ import state_store
 
 OPTIONS = Path("/data/options.json")
 STATE = Path("/data/state.json")
-APP_VERSION = "2.2.1"
+APP_VERSION = "2.2.2"
 SUPERVISOR = "http://supervisor/"
 HA_WS = "ws://supervisor/core/websocket"
 HA_CONFIG_ENTRIES = Path("/homeassistant/.storage/core.config_entries")
@@ -398,7 +398,9 @@ def sync_airgradient_devices(opts, api, monitors, default_notification_ids, stat
 
 
 def discover_home_connect_local():
-    return integration_home_connect.discover_home_connect_local(HAWebSocket, LOG)
+    return integration_home_connect.discover_home_connect_local(
+        HAWebSocket, _config_entry_hosts_from_storage, LOG,
+    )
 
 
 def sync_home_connect_local(opts, api, monitors, default_notification_ids, state):
