@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import json
 import logging
 import os
 import time
@@ -30,6 +29,7 @@ import integration_stiebel_eltron
 import integration_synology
 import integration_unifi
 import kuma_monitor
+import option_loader
 import push_state
 import state_store
 
@@ -45,96 +45,7 @@ HTTP = requests.Session()
 
 
 def read_options() -> Dict[str, Any]:
-    with OPTIONS.open("r", encoding="utf-8") as f:
-        data = json.load(f)
-
-    required = ("kuma_url", "kuma_username", "kuma_password")
-    missing = [k for k in required if not str(data.get(k, "")).strip()]
-    if missing:
-        raise RuntimeError("Missing required option(s): " + ", ".join(missing))
-
-    data["kuma_url"] = str(data["kuma_url"]).rstrip("/")
-    data["sync_interval"] = max(20, int(data.get("sync_interval", 60)))
-    data["heartbeat_interval"] = max(
-        data["sync_interval"] + 30,
-        int(data.get("heartbeat_interval", 180)),
-    )
-    data["shelly_ping_interval"] = max(20, int(data.get("shelly_ping_interval", 60)))
-    data["shelly_max_retries"] = max(0, int(data.get("shelly_max_retries", 2)))
-    data["unifi_ping_interval"] = max(20, int(data.get("unifi_ping_interval", 60)))
-    data["unifi_max_retries"] = max(0, int(data.get("unifi_max_retries", 2)))
-    data["fritz_ping_interval"] = max(20, int(data.get("fritz_ping_interval", 60)))
-    data["fritz_max_retries"] = max(0, int(data.get("fritz_max_retries", 2)))
-    data["fully_kiosk_ping_interval"] = max(20, int(data.get("fully_kiosk_ping_interval", 60)))
-    data["fully_kiosk_max_retries"] = max(0, int(data.get("fully_kiosk_max_retries", 2)))
-    data["homematic_ip_ping_interval"] = max(20, int(data.get("homematic_ip_ping_interval", 60)))
-    data["homematic_ip_max_retries"] = max(0, int(data.get("homematic_ip_max_retries", 2)))
-    data["e3dc_ping_interval"] = max(20, int(data.get("e3dc_ping_interval", 60)))
-    data["e3dc_max_retries"] = max(0, int(data.get("e3dc_max_retries", 2)))
-    data["overkiz_ping_interval"] = max(20, int(data.get("overkiz_ping_interval", 60)))
-    data["overkiz_max_retries"] = max(0, int(data.get("overkiz_max_retries", 2)))
-    data["hue_ping_interval"] = max(20, int(data.get("hue_ping_interval", 60)))
-    data["hue_max_retries"] = max(0, int(data.get("hue_max_retries", 2)))
-    data["smlight_ping_interval"] = max(20, int(data.get("smlight_ping_interval", 60)))
-    data["smlight_max_retries"] = max(0, int(data.get("smlight_max_retries", 2)))
-    data["stiebel_eltron_ping_interval"] = max(20, int(data.get("stiebel_eltron_ping_interval", 60)))
-    data["stiebel_eltron_max_retries"] = max(0, int(data.get("stiebel_eltron_max_retries", 2)))
-    data["synology_ping_interval"] = max(20, int(data.get("synology_ping_interval", 60)))
-    data["synology_max_retries"] = max(0, int(data.get("synology_max_retries", 2)))
-    data["airgradient_ping_interval"] = max(20, int(data.get("airgradient_ping_interval", 60)))
-    data["airgradient_max_retries"] = max(0, int(data.get("airgradient_max_retries", 2)))
-    data["airgradient_monitor_prefix"] = str(data.get("airgradient_monitor_prefix", "AirGradient: "))
-    data["discover_airgradient_devices"] = bool(data.get("discover_airgradient_devices", True))
-    data["esphome_ping_interval"] = max(20, int(data.get("esphome_ping_interval", 60)))
-    data["esphome_max_retries"] = max(0, int(data.get("esphome_max_retries", 2)))
-
-    data["monitor_prefix"] = str(data.get("monitor_prefix", "HA Add-on: "))
-    data["shelly_monitor_prefix"] = str(data.get("shelly_monitor_prefix", "Shelly: "))
-    data["unifi_monitor_prefix"] = str(data.get("unifi_monitor_prefix", "UniFi: "))
-    data["fritz_monitor_prefix"] = str(data.get("fritz_monitor_prefix", "FRITZ!: "))
-    data["fully_kiosk_monitor_prefix"] = str(data.get("fully_kiosk_monitor_prefix", "Fully Kiosk: "))
-    data["homematic_ip_monitor_prefix"] = str(data.get("homematic_ip_monitor_prefix", "Homematic IP: "))
-    data["matter_monitor_prefix"] = str(data.get("matter_monitor_prefix", "Matter: "))
-    data["e3dc_monitor_prefix"] = str(data.get("e3dc_monitor_prefix", "E3DC: "))
-    data["overkiz_monitor_prefix"] = str(data.get("overkiz_monitor_prefix", "Somfy: "))
-    data["hue_monitor_prefix"] = str(data.get("hue_monitor_prefix", "Hue: "))
-    data["smlight_monitor_prefix"] = str(data.get("smlight_monitor_prefix", "SMLIGHT: "))
-    data["stiebel_eltron_monitor_prefix"] = str(data.get("stiebel_eltron_monitor_prefix", "Stiebel Eltron: "))
-    data["synology_monitor_prefix"] = str(data.get("synology_monitor_prefix", "Synology: "))
-    data["esphome_monitor_prefix"] = str(data.get("esphome_monitor_prefix", "ESPHome: "))
-    data["zigbee2mqtt_monitor_prefix"] = str(data.get("zigbee2mqtt_monitor_prefix", "Zigbee2MQTT: "))
-    data["mqtt_monitor_prefix"] = str(data.get("mqtt_monitor_prefix", "MQTT: "))
-    data["push_down_grace_cycles"] = max(1, int(data.get("push_down_grace_cycles", 3)))
-    data["verify_ssl"] = bool(data.get("verify_ssl", True))
-    data["discover_addons"] = bool(data.get("discover_addons", True))
-    data["discover_shelly"] = bool(data.get("discover_shelly", True))
-    data["discover_unifi_network_devices"] = bool(
-        data.get("discover_unifi_network_devices", True)
-    )
-    data["discover_fritz_network_devices"] = bool(
-        data.get("discover_fritz_network_devices", True)
-    )
-    data["discover_fully_kiosk_devices"] = bool(
-        data.get("discover_fully_kiosk_devices", True)
-    )
-    data["discover_homematic_ip_infrastructure"] = bool(
-        data.get("discover_homematic_ip_infrastructure", True)
-    )
-    data["discover_matter_devices"] = bool(data.get("discover_matter_devices", True))
-    data["discover_e3dc_devices"] = bool(data.get("discover_e3dc_devices", True))
-    data["discover_overkiz_devices"] = bool(data.get("discover_overkiz_devices", True))
-    data["discover_hue_bridge"] = bool(data.get("discover_hue_bridge", True))
-    data["discover_hue_devices"] = bool(data.get("discover_hue_devices", False))
-    data["discover_smlight_devices"] = bool(data.get("discover_smlight_devices", True))
-    data["discover_stiebel_eltron"] = bool(data.get("discover_stiebel_eltron", True))
-    data["discover_synology_dsm"] = bool(data.get("discover_synology_dsm", True))
-    data["discover_esphome_devices"] = bool(data.get("discover_esphome_devices", True))
-    data["discover_zigbee2mqtt_devices"] = bool(data.get("discover_zigbee2mqtt_devices", True))
-    data["discover_mqtt_devices"] = bool(data.get("discover_mqtt_devices", True))
-    data["ignore_slugs_set"] = {
-        x.strip() for x in str(data.get("ignore_slugs", "")).split(",") if x.strip()
-    }
-    return data
+    return option_loader.load_options(OPTIONS)
 
 
 def load_state() -> Dict[str, Any]:
