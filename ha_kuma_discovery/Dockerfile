@@ -29,6 +29,7 @@ COPY integration_stiebel_eltron.py /integration_stiebel_eltron.py
 COPY integration_synology.py /integration_synology.py
 COPY integration_unifi.py /integration_unifi.py
 COPY kuma_monitor.py /kuma_monitor.py
+COPY option_loader.py /option_loader.py
 COPY push_state.py /push_state.py
 COPY state_store.py /state_store.py
 
