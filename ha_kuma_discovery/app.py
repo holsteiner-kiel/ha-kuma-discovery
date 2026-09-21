@@ -3,13 +3,10 @@
 import json
 import logging
 import os
-import re
 import time
-import ipaddress
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Dict, Any
-from urllib.parse import urlparse
 
 import requests
 import websocket
@@ -486,122 +483,25 @@ def sync_airgradient_devices(opts, api, monitors, default_notification_ids, stat
     )
 
 
-def _entity_domain(entity_id: str) -> str:
-    return str(entity_id).split(".", 1)[0] if "." in str(entity_id) else ""
-
-
-def _state_ip(attributes: Dict[str, Any]) -> str | None:
-    """
-    Try common Home Assistant attributes used for network-device addresses.
-    """
-    for key in ("ip", "ip_address", "host", "address"):
-        value = attributes.get(key)
-        if not value:
-            continue
-        value = str(value).strip()
-
-        # Strip URL/port if a host-like attribute happens to contain one.
-        if "://" in value:
-            try:
-                parsed = urlparse(value)
-                value = parsed.hostname or ""
-            except Exception:
-                pass
-
-        # A normal IPv4/IPv6/hostname is fine; ignore obvious MAC addresses.
-        if value and not re.fullmatch(r"(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}", value):
-            return value
-    return None
-
-
-def _normalize_mac(value: str) -> str:
-    return re.sub(r"[^0-9a-f]", "", str(value).lower())
-
-
-def _device_mac_from_registry(device: Dict[str, Any]) -> str | None:
-    for connection in device.get("connections") or []:
-        if not isinstance(connection, (list, tuple)) or len(connection) != 2:
-            continue
-        connection_type, value = connection
-        if str(connection_type).lower() == "mac" and value:
-            return _normalize_mac(str(value))
-    return None
-
-
-def _looks_like_mac_name(value: str) -> bool:
-    value = str(value or "").strip()
-    if not value:
-        return False
-    return bool(
-        re.fullmatch(r"(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}", value)
-        or re.fullmatch(r"[0-9A-Fa-f]{12}", value)
-    )
-
-
-def _is_private_or_local_host(host: str) -> bool:
-    """
-    UniFi infrastructure management addresses should normally be LAN addresses.
-    Hostnames are accepted. Literal public IP addresses are rejected so a
-    gateway's WAN IP is not accidentally monitored instead of its management IP.
-    """
-    host = str(host or "").strip()
-    if not host:
-        return False
-    try:
-        ip = ipaddress.ip_address(host)
-    except ValueError:
-        return True
-    return bool(ip.is_private or ip.is_loopback or ip.is_link_local)
+_entity_domain = ha_client.entity_domain
+_state_ip = ha_client.state_ip
+_normalize_mac = ha_client.normalize_mac
+_device_mac_from_registry = ha_client.device_mac_from_registry
+_looks_like_mac_name = ha_client.looks_like_mac_name
+_is_private_or_local_host = ha_client.is_private_or_local_host
+_device_has_identifier = ha_client.device_has_identifier
 
 
 def _config_entry_hosts_from_storage(
     domain: str,
     allowed_entry_ids: set[str],
 ) -> Dict[str, str]:
-    """Return config-entry data.host values for a specific HA integration."""
-    hosts: Dict[str, str] = {}
-    if not allowed_entry_ids:
-        return hosts
-
-    if not HA_CONFIG_ENTRIES.exists():
-        LOG.warning(
-            "Home Assistant config-entry storage is not mounted at %s; "
-            "%s host discovery is unavailable.",
-            HA_CONFIG_ENTRIES,
-            domain,
-        )
-        return hosts
-
-    try:
-        raw = json.loads(HA_CONFIG_ENTRIES.read_text(encoding="utf-8"))
-    except Exception as exc:
-        LOG.warning("Could not read Home Assistant config-entry storage: %s", exc)
-        return hosts
-
-    for entry in (raw.get("data") or {}).get("entries") or []:
-        if str(entry.get("domain") or "") != domain:
-            continue
-
-        entry_id = str(entry.get("entry_id") or "")
-        if not entry_id or entry_id not in allowed_entry_ids:
-            continue
-
-        host = str((entry.get("data") or {}).get("host") or "").strip()
-        if host:
-            hosts[entry_id] = host
-
-    return hosts
-
-
-def _device_has_identifier(device: Dict[str, Any], identifier_type: str) -> bool:
-    for identifier in device.get("identifiers") or []:
-        if (
-            isinstance(identifier, (list, tuple))
-            and len(identifier) >= 2
-            and str(identifier[0]).lower() == identifier_type.lower()
-        ):
-            return True
-    return False
+    return ha_client.config_entry_hosts_from_storage(
+        domain,
+        allowed_entry_ids,
+        HA_CONFIG_ENTRIES,
+        LOG,
+    )
 
 
 _push_effective_up = push_state.push_effective_up
