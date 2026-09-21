@@ -4,7 +4,7 @@
 
 Home Assistant devices and infrastructure mirrored to Uptime Kuma.
 
-Current version: **2.1.0**. Based on the original 1.5.1 add-on. Supports amd64 and aarch64.
+Current version: **2.2.0**. Based on the original 1.5.1 add-on. Supports amd64 and aarch64.
 
 ## Installation
 
@@ -22,11 +22,11 @@ Install **HA Kuma Discovery**, set `kuma_url`, `kuma_username` and `kuma_passwor
 
 Keep a backup of the existing add-on configuration and data. A repository installation has a different add-on identity from a local installation; settings and `/data/state.json` are not migrated automatically. Stop the local copy before starting the repository copy, and verify the resulting Kuma monitors before removing the old installation.
 
-## Version 2.1.0
+## Version 2.2.0
 
 With the default settings, every successfully evaluated Push monitor sends its current state each cycle. Kuma retains its 180-second heartbeat window and DOWN requires three consecutive unavailable cycles. Recovery is reported immediately.
 
-Version 2.1.0 stores a stable link between each Home Assistant source and its
+Version 2.2.0 keeps the stable link between each Home Assistant source and its
 managed Kuma monitor. Later device or app/add-on renames update the same monitor
 instead of creating a duplicate. Existing installations learn these links from
 their current monitor names during the first successful sync. Configuration and
@@ -37,7 +37,9 @@ monitoring behavior remain compatible. See the changelog for details.
 
 ## Validation
 
-GitHub Actions runs 58 behavior tests and five image-publication policy tests plus Python compilation, shell syntax, YAML metadata and native amd64/aarch64 container builds. These checks do not replace testing inside Home Assistant with a running Uptime Kuma instance.
+GitHub Actions runs 108 automated tests plus Python compilation, shell syntax,
+YAML metadata and native amd64/aarch64 container builds. These checks do not
+replace testing inside Home Assistant with a running Uptime Kuma instance.
 
 ## License
 

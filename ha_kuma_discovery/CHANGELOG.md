@@ -1,5 +1,24 @@
 # Changelog
 
+## 2.2.0
+
+### Changed
+- Split the former monolithic `app.py` into focused modules for Home Assistant
+  access, Kuma monitor handling, Push state/debounce, persistence, add-on option
+  loading and every supported integration.
+- Keep `app.py` as the compatibility and cycle-orchestration entry point; no
+  monitor behavior or configuration semantics changed during the modularization.
+- Correct the add-on startup banner to report version `2.2.0`.
+
+### Improved
+- Add focused module tests and keep the full validation suite at 108 automated
+  tests, including the existing integration, state, Push and image-policy coverage.
+
+### Compatibility
+- Existing configuration, monitor names and identities, notification assignment,
+  Push debounce, state persistence and backup recovery remain compatible.
+- No new settings are required and stale monitors are not deleted.
+
 ## 2.1.0
 
 ### Added
