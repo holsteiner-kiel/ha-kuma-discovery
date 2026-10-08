@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.2.3
+
+### Fixed
+- Use each physical Hue device's enabled native `zigbee_connectivity` sensor as its Push liveness source. `connected` is UP; other or missing states remain debounced DOWN observations.
+
 ## 2.2.2
 
 ### Fixed

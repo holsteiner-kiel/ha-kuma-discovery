@@ -144,6 +144,7 @@ def discover_hue(
 
         did = str(device.get("id") or "")
         candidates = []
+        connectivity = []
         for entity in entities_by_device.get(did, []):
             if entity.get("disabled_by") is not None:
                 continue
@@ -154,6 +155,18 @@ def discover_hue(
                 continue
 
             current = state_by_entity.get(entity_id)
+            is_connectivity_sensor = (
+                domain == "sensor"
+                and str(entity.get("translation_key") or "") == "zigbee_connectivity"
+            )
+            # A registered native connectivity entity without a current state
+            # must not make a device look healthy through another entity.
+            if is_connectivity_sensor:
+                connectivity.append({
+                    "entity_id": entity_id,
+                    "state": str((current or {}).get("state") or "unknown").lower(),
+                })
+
             if not current:
                 continue
 
@@ -172,14 +185,32 @@ def discover_hue(
         if not candidates:
             continue
 
+        # Since Home Assistant 2026.10, Hue makes the native Zigbee
+        # Connectivity diagnostic sensor available for each physical device.
+        # Prefer it over the generic availability derived from light/switch
+        # entities: a switched-off light remains connected, while the native
+        # sensor directly reports the Hue bridge's device reachability.
+        selected_connectivity = (
+            min(connectivity, key=lambda item: item["entity_id"])
+            if connectivity
+            else None
+        )
+        up = (
+            selected_connectivity["state"] == "connected"
+            if selected_connectivity
+            else bool(available)
+        )
+
         children.append({
             "device_id": did,
             "name": name,
             "manufacturer": manufacturer,
             "model": model,
-            "up": bool(available),
+            "up": up,
             "available_entities": len(available),
             "checked_entities": len(candidates),
+            "connectivity_entity": selected_connectivity["entity_id"] if selected_connectivity else "",
+            "connectivity_state": selected_connectivity["state"] if selected_connectivity else "",
             "sample_entity": (
                 available[0]["entity_id"]
                 if available
@@ -241,11 +272,17 @@ def sync_hue(
                 identity=f'hue_device:{device["device_id"]}',
             )
 
-            message = (
-                f'HA Hue availability: '
-                f'{device["available_entities"]}/{device["checked_entities"]} '
-                f'active entities available'
-            )
+            if device.get("connectivity_entity"):
+                message = (
+                    f'HA Hue Zigbee connectivity: {device["connectivity_entity"]}='
+                    f'{device["connectivity_state"]}'
+                )
+            else:
+                message = (
+                    f'HA Hue availability: '
+                    f'{device["available_entities"]}/{device["checked_entities"]} '
+                    f'active entities available'
+                )
             if device.get("sample_entity"):
                 message += f' | sample: {device["sample_entity"]}'
 

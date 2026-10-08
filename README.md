@@ -4,7 +4,7 @@
 
 Home Assistant devices and infrastructure mirrored to Uptime Kuma.
 
-Current version: **2.2.1**. Based on the original 1.5.1 add-on. Supports amd64 and aarch64.
+Current version: **2.2.3**. Based on the original 1.5.1 add-on. Supports amd64 and aarch64.
 
 ## Installation
 

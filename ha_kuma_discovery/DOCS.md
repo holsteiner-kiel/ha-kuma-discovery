@@ -1,4 +1,4 @@
-# HA Kuma Discovery 2.2.1
+# HA Kuma Discovery 2.2.3
 
 Home Assistant infrastructure and physical devices mirrored to Uptime Kuma.
 
