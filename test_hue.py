@@ -35,14 +35,40 @@ class HueIntegrationTests(unittest.TestCase):
                 {"id": "light-1", "config_entry_id": "hue-1", "identifiers": [["hue", "light-1"]], "connections": [["mac", "02:00:00:00:00:01"]], "name": "Desk Light", "model": "Synthetic Light", "manufacturer": "Philips"},
                 {"id": "room", "config_entry_id": "hue-1", "identifiers": [["hue", "room"]], "name": "Room"},
             ],
-            "config/entity_registry/list": [{"entity_id": "light.desk", "device_id": "light-1", "config_entry_id": "hue-1", "platform": "hue"}],
-            "get_states": [{"entity_id": "light.desk", "state": "on"}],
+            "config/entity_registry/list": [
+                {"entity_id": "light.desk", "device_id": "light-1", "config_entry_id": "hue-1", "platform": "hue"},
+                {"entity_id": "sensor.desk_zigbee_connectivity", "device_id": "light-1", "config_entry_id": "hue-1", "platform": "hue", "translation_key": "zigbee_connectivity"},
+            ],
+            "get_states": [{"entity_id": "light.desk", "state": "unavailable"}, {"entity_id": "sensor.desk_zigbee_connectivity", "state": "connected"}],
         }
         with patch.object(app, "_config_entry_hosts_from_storage", return_value={"hue-1": "bridge.example.test"}):
             data = app.discover_hue()
         self.assertEqual(data["bridges"][0]["host"], "bridge.example.test")
         self.assertEqual([d["device_id"] for d in data["children"]], ["light-1"])
         self.assertTrue(data["children"][0]["up"])
+        self.assertEqual(data["children"][0]["connectivity_entity"], "sensor.desk_zigbee_connectivity")
+
+    def test_connectivity_sensor_controls_hue_liveness(self):
+        FakeWS.responses = {
+            "config_entries/get": [{"entry_id": "hue-1"}],
+            "config/device_registry/list": [{"id": "light-1", "config_entry_id": "hue-1", "identifiers": [["hue", "light-1"]], "connections": [["mac", "02:00:00:00:00:01"]], "name": "Desk Light"}],
+            "config/entity_registry/list": [{"entity_id": "light.desk", "device_id": "light-1", "config_entry_id": "hue-1", "platform": "hue"}, {"entity_id": "sensor.desk_zigbee_connectivity", "device_id": "light-1", "config_entry_id": "hue-1", "platform": "hue", "translation_key": "zigbee_connectivity"}],
+            "get_states": [{"entity_id": "light.desk", "state": "on"}, {"entity_id": "sensor.desk_zigbee_connectivity", "state": "connectivity_issue"}],
+        }
+        with patch.object(app, "_config_entry_hosts_from_storage", return_value={}): data = app.discover_hue()
+        self.assertFalse(data["children"][0]["up"])
+        self.assertEqual(data["children"][0]["connectivity_state"], "connectivity_issue")
+
+    def test_missing_connectivity_state_is_not_reported_as_up(self):
+        FakeWS.responses = {
+            "config_entries/get": [{"entry_id": "hue-1"}],
+            "config/device_registry/list": [{"id": "light-1", "config_entry_id": "hue-1", "identifiers": [["hue", "light-1"]], "connections": [["mac", "02:00:00:00:00:01"]], "name": "Desk Light"}],
+            "config/entity_registry/list": [{"entity_id": "light.desk", "device_id": "light-1", "config_entry_id": "hue-1", "platform": "hue"}, {"entity_id": "sensor.desk_zigbee_connectivity", "device_id": "light-1", "config_entry_id": "hue-1", "platform": "hue", "translation_key": "zigbee_connectivity"}],
+            "get_states": [{"entity_id": "light.desk", "state": "on"}],
+        }
+        with patch.object(app, "_config_entry_hosts_from_storage", return_value={}): data = app.discover_hue()
+        self.assertFalse(data["children"][0]["up"])
+        self.assertEqual(data["children"][0]["connectivity_state"], "unknown")
 
     def test_sync_preserves_bridge_and_child_identities(self):
         data = {"bridges": [{"entry_id": "hue-1", "name": "Bridge", "host": "bridge.example.test", "title": "Example"}], "children": [{"device_id": "light-1", "name": "Desk Light", "manufacturer": "Philips", "model": "Synthetic", "up": True, "available_entities": 1, "checked_entities": 1, "sample_entity": "light.desk"}]}
