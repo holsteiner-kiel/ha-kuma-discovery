@@ -106,7 +106,7 @@ def discover_hue(
         # Only real physical Hue/Zigbee devices should become Kuma child
         # monitors. Hue also exposes logical Room/Zone devices in HA. Those
         # have Hue identifiers and may even own light/scene entities, but
-        # they do not have their own hardware MAC connection.
+        # they do not have their own physical network or Zigbee connection.
         identifiers = device.get("identifiers") or []
         has_hue_identifier = any(
             isinstance(i, (list, tuple))
@@ -118,16 +118,16 @@ def discover_hue(
             continue
 
         connections = device.get("connections") or []
-        has_mac_connection = any(
+        has_physical_connection = any(
             isinstance(c, (list, tuple))
             and len(c) >= 2
-            and str(c[0]).lower() == "mac"
+            and str(c[0]).lower() in {"mac", "zigbee"}
             and str(c[1]).strip()
             for c in connections
         )
-        if not has_mac_connection:
+        if not has_physical_connection:
             log.debug(
-                "Skipping logical Hue device '%s' (model=%s): no MAC connection",
+                "Skipping logical Hue device '%s' (model=%s): no physical connection",
                 name,
                 model or "unknown",
             )

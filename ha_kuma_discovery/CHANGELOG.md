@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.2.4
+
+### Fixed
+- Recognize Home Assistant 2026.10 Hue physical devices with their native Zigbee registry connection, so their enabled `zigbee_connectivity` sensor can create and drive the existing Push monitor.
+
 ## 2.2.3
 
 ### Fixed
