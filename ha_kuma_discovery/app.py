@@ -38,7 +38,7 @@ import state_store
 
 OPTIONS = Path("/data/options.json")
 STATE = Path("/data/state.json")
-APP_VERSION = "2.2.3"
+APP_VERSION = "2.2.4"
 SUPERVISOR = "http://supervisor/"
 HA_WS = "ws://supervisor/core/websocket"
 HA_CONFIG_ENTRIES = Path("/homeassistant/.storage/core.config_entries")

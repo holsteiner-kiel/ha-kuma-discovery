@@ -32,7 +32,7 @@ class HueIntegrationTests(unittest.TestCase):
             "config_entries/get": [{"entry_id": "hue-1", "title": "Example Bridge"}],
             "config/device_registry/list": [
                 {"id": "bridge", "config_entry_id": "hue-1", "identifiers": [["hue", "bridge"]], "name": "Hue Bridge", "model": "Hue Bridge"},
-                {"id": "light-1", "config_entry_id": "hue-1", "identifiers": [["hue", "light-1"]], "connections": [["mac", "02:00:00:00:00:01"]], "name": "Desk Light", "model": "Synthetic Light", "manufacturer": "Philips"},
+                {"id": "light-1", "config_entry_id": "hue-1", "identifiers": [["hue", "light-1"]], "connections": [["zigbee", "02:00:00:00:00:01"]], "name": "Desk Light", "model": "Synthetic Light", "manufacturer": "Philips"},
                 {"id": "room", "config_entry_id": "hue-1", "identifiers": [["hue", "room"]], "name": "Room"},
             ],
             "config/entity_registry/list": [
