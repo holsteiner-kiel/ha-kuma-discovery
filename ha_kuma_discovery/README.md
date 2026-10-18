@@ -1,4 +1,4 @@
-# HA Kuma Discovery 2.3.0
+# HA Kuma Discovery 2.3.1
 
 ![HA Kuma Discovery](logo.png)
 

@@ -103,7 +103,7 @@ jobs:
           docker pull "${IMAGE}:${VERSION}"
           test "$(docker image inspect "${IMAGE}:${VERSION}" --format '{{index .Config.Labels "io.hass.arch"}}')" = "${ARCH}"
           test "$(docker image inspect "${IMAGE}:${VERSION}" --format '{{index .Config.Labels "io.hass.version"}}')" = "${VERSION}"
-          docker run --rm --entrypoint python3 "${IMAGE}:${VERSION}" -c 'import requests, websocket; from uptime_kuma_api import UptimeKumaApi; compile(open("/app.py").read(), "/app.py", "exec")'
+          docker run --rm --entrypoint python3 "${IMAGE}:${VERSION}" -c 'import requests, websocket; from uptime_kuma_api import UptimeKumaApi; import app'
 
   manifest:
     needs: [prepare, build]
