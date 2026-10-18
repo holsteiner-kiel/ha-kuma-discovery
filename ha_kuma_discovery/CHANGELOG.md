@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.3.1
+
+### Fixed
+- Include the Aquael Heater discovery module in the container image so the add-on starts correctly.
+
 ## 2.3.0
 
 ### Added
