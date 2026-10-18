@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.3.0
+
+### Added
+- Discover native Aquael Heater devices through their enabled `aquael_heater` Connectivity binary sensor and monitor them with Push.
+
 ## 2.2.4
 
 ### Fixed

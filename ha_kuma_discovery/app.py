@@ -14,6 +14,7 @@ from uptime_kuma_api import UptimeKumaApi
 import ha_client
 import integration_addons
 import integration_airgradient
+import integration_aquael_heater
 import integration_e3dc
 import integration_esphome
 import integration_fritz
@@ -38,7 +39,7 @@ import state_store
 
 OPTIONS = Path("/data/options.json")
 STATE = Path("/data/state.json")
-APP_VERSION = "2.2.4"
+APP_VERSION = "2.3.0"
 SUPERVISOR = "http://supervisor/"
 HA_WS = "ws://supervisor/core/websocket"
 HA_CONFIG_ENTRIES = Path("/homeassistant/.storage/core.config_entries")
@@ -384,6 +385,18 @@ def sync_esphome_devices(opts, api, monitors, default_notification_ids, state):
     )
 
 
+def discover_aquael_heater_devices() -> list[Dict[str, Any]]:
+    return integration_aquael_heater.discover_aquael_heater_devices(HAWebSocket, LOG)
+
+
+def sync_aquael_heater_devices(opts, api, monitors, default_notification_ids, state):
+    integration_aquael_heater.sync_aquael_heater_devices(
+        opts, api, monitors, default_notification_ids, state,
+        discover_aquael_heater_devices, ensure_push_monitor, _push_effective_up,
+        push_status_if_needed, LOG,
+    )
+
+
 def discover_airgradient_devices() -> list[Dict[str, Any]]:
     return integration_airgradient.discover_airgradient_devices(
         HAWebSocket, _config_entry_hosts_from_storage, LOG,
@@ -511,6 +524,7 @@ def sync_once(opts):
                 (opts["discover_synology_dsm"], sync_synology_dsm),
                 (opts["discover_esphome_devices"], sync_esphome_devices),
                 (opts["discover_airgradient_devices"], sync_airgradient_devices),
+                (opts["discover_aquael_heater_devices"], sync_aquael_heater_devices),
                 (opts["discover_homeconnect_local_devices"], sync_home_connect_local),
                 (opts["discover_homeconnect_cloud_devices"], sync_home_connect_cloud),
                 (opts["discover_ecovacs_devices"], sync_ecovacs_devices),

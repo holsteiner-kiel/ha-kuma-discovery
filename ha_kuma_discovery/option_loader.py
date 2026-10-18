@@ -35,6 +35,7 @@ def load_options(options_path: Path) -> Dict[str, Any]:
 
     prefixes = {
         "airgradient_monitor_prefix": "AirGradient: ",
+        "aquael_heater_monitor_prefix": "Aquael Heater: ",
         "homeconnect_local_monitor_prefix": "Home Connect Local: ",
         "homeconnect_monitor_prefix": "Home Connect: ",
         "ecovacs_monitor_prefix": "Ecovacs: ",
@@ -80,6 +81,7 @@ def load_options(options_path: Path) -> Dict[str, Any]:
         "discover_synology_dsm": True,
         "discover_esphome_devices": True,
         "discover_airgradient_devices": True,
+        "discover_aquael_heater_devices": True,
         "discover_homeconnect_local_devices": True,
         "discover_homeconnect_cloud_devices": True,
         "discover_ecovacs_devices": True,
