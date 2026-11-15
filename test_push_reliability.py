@@ -48,7 +48,35 @@ class PushReliabilityTests(unittest.TestCase):
                 app.push_status_if_needed('http://example.invalid', {'name': 'sample'},
                                           effective, 'test', True, state, 180, 60)
         self.assertEqual([c.args[2] for c in send.call_args_list],
-                         [True, True, True, False, True, True])
+                         [True, False, True])
+
+    def test_unchanged_status_is_refreshed_before_timeout(self):
+        state = {}
+        clock = [1000]
+        sent = Mock()
+        def tick():
+            return clock[0]
+        with patch.object(app, 'push_status', sent), patch.object(app.time, 'time', side_effect=tick):
+            def push(up):
+                return app.push_status_if_needed('http://example.invalid', {'name': 'sample'},
+                                                  up, 'test', True, state, 180, 60)
+            self.assertTrue(push(True))
+            clock[0] += 60
+            self.assertFalse(push(True))
+            clock[0] += 60
+            self.assertTrue(push(True))
+            clock[0] += 1
+            self.assertTrue(push(False))  # changed state, immediate
+            clock[0] += 1
+            self.assertFalse(push(False))
+        self.assertEqual([c.args[2] for c in sent.call_args_list], [True, True, False])
+
+    def test_clock_rollback_forces_heartbeat(self):
+        state = {'_push_status_cache': {'sample': {'up': True, 'last_push': 1000}}}
+        with patch.object(app, 'push_status') as send, patch.object(app.time, 'time', return_value=900):
+            self.assertTrue(app.push_status_if_needed('http://example.invalid', {'name': 'sample'},
+                                                     True, 'test', True, state, 180, 60))
+        send.assert_called_once()
 
     def test_stage_errors_redact_exception_payload(self):
         for stage in ['authentication/login', 'fetching monitors', 'fetching notifications',
