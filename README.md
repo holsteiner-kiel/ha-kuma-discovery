@@ -4,7 +4,7 @@
 
 Home Assistant devices and infrastructure mirrored to Uptime Kuma.
 
-Current version: **2.3.1**. Based on the original 1.5.1 add-on. Supports amd64 and aarch64.
+Current version: **2.3.2**. Based on the original 1.5.1 add-on. Supports amd64 and aarch64.
 
 ## Installation
 
@@ -36,7 +36,7 @@ never resolved through UniFi, FRITZ! or other unrelated integrations.
 
 ## Version 2.2.0
 
-With the default settings, every successfully evaluated Push monitor sends its current state each cycle. Kuma retains its 180-second heartbeat window and DOWN requires three consecutive unavailable cycles. Recovery is reported immediately.
+With the default settings, unchanged Push monitors refresh halfway through the configured heartbeat window instead of every cycle; state changes still send immediately. Kuma retains its 180-second heartbeat window and DOWN requires three consecutive unavailable cycles. Recovery is reported immediately.
 
 Version 2.2.0 keeps the stable link between each Home Assistant source and its
 managed Kuma monitor. Later device or app/add-on renames update the same monitor

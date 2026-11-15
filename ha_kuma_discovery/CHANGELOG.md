@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.3.2
+
+### Fixed
+- Skip Uptime Kuma Push monitors that are intentionally disabled, without changing their active state.
+- Isolate per-add-on heartbeat failures so one invalid or unavailable monitor cannot interrupt the remaining add-on synchronization.
+- Include the monitor name, exception type, and safe HTTP status code in add-on failure logs without exposing Push tokens or request URLs.
+
+### Improved
+- Reduce redundant Push HTTP traffic: unchanged states refresh halfway through the heartbeat window, while state changes are sent immediately.
+- Add regression tests for inactive monitors, heartbeat failures, logging redaction, state transitions, and time changes.
+
+
 ## 2.3.1
 
 ### Fixed

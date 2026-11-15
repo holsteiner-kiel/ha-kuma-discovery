@@ -1,4 +1,4 @@
-# HA Kuma Discovery 2.3.1
+# HA Kuma Discovery 2.3.2
 
 Home Assistant infrastructure and physical devices mirrored to Uptime Kuma.
 
@@ -40,10 +40,11 @@ heartbeat_interval: 180
 push_down_grace_cycles: 3
 ```
 
-Every successfully evaluated Push monitor sends its current state each sync
-cycle, including unchanged states; there is no elapsed-time refresh gate. Kuma keeps its
-180-second heartbeat window. State-based Push devices report DOWN after three
-consecutive unavailable observations and recover immediately when observed UP.
+With a 180-second heartbeat window, unchanged Push states refresh after 90 seconds
+(the next 60-second cycle, normally every 120 seconds). State changes send
+immediately. Kuma retains its 180-second heartbeat window. State-based Push
+devices report DOWN after three consecutive unavailable observations and recover
+immediately when observed UP.
 Ping-based monitors retain their existing behavior.
 
 ## Reliability in 1.5.2
@@ -62,7 +63,7 @@ If neither file is usable, discovery starts with empty state and logs a warning.
 This backup supplements Home Assistant backups; it does not replace them.
 
 HTTP connections are reused. Supervisor authorization is sent only on Supervisor
-requests. Error summaries omit exception text to avoid exposing secret Push URLs.
+requests. Error summaries omit exception text to avoid exposing secret Push URLs. Inactive Kuma Push monitors are skipped; per-add-on push failures log the monitor, exception type and numeric HTTP status without stopping other add-ons.
 
 ## Troubleshooting
 
