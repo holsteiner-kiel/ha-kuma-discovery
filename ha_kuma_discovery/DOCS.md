@@ -40,10 +40,11 @@ heartbeat_interval: 180
 push_down_grace_cycles: 3
 ```
 
-Unchanged Push monitors refresh halfway through the configured heartbeat interval; changes send immediately. Every successfully evaluated Push monitor retains Kuma's
-cycle, including unchanged states; there is no elapsed-time refresh gate. Kuma keeps its
-180-second heartbeat window. State-based Push devices report DOWN after three
-consecutive unavailable observations and recover immediately when observed UP.
+With a 180-second heartbeat window, unchanged Push states refresh after 90 seconds
+(the next 60-second cycle, normally every 120 seconds). State changes send
+immediately. Kuma retains its 180-second heartbeat window. State-based Push
+devices report DOWN after three consecutive unavailable observations and recover
+immediately when observed UP.
 Ping-based monitors retain their existing behavior.
 
 ## Reliability in 1.5.2
