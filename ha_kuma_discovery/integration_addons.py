@@ -30,6 +30,7 @@ def sync(
 
     log.info("Supervisor returned %d monitored add-ons", len(discovered))
 
+    pushed = skipped = failed = 0
     for addon in discovered:
         slug = addon["slug"]
         name = addon.get("name") or slug
@@ -46,18 +47,43 @@ def sync(
             identity=f"addon:{slug}",
         )
 
+        # Disabled Kuma monitors are an intentional operator decision. Kuma
+        # rejects pushes to them, so leave them disabled and continue.
+        if monitor.get("active", 1) in (0, False, "0", "false", "False"):
+            skipped += 1
+            log.info("Skipping inactive Uptime Kuma monitor: %s (%s)", monitor_name, slug)
+            continue
+
         up = status == "started"
-        push_status_if_needed(
-            opts["kuma_url"],
-            monitor,
-            up,
-            f"Supervisor state: {status} | slug: {slug}",
-            opts["verify_ssl"],
-            state,
-            opts["heartbeat_interval"],
-            opts["sync_interval"],
-        )
-        log.info("%s (%s) -> %s", monitor_name, slug, "UP" if up else "DOWN")
+        try:
+            sent = push_status_if_needed(
+                opts["kuma_url"],
+                monitor,
+                up,
+                f"Supervisor state: {status} | slug: {slug}",
+                opts["verify_ssl"],
+                state,
+                opts["heartbeat_interval"],
+                opts["sync_interval"],
+            )
+        except Exception as exc:
+            failed += 1
+            # Never print exception messages: HTTPError may embed Push tokens.
+            response = getattr(exc, "response", None)
+            code = getattr(response, "status_code", None)
+            log.warning(
+                "Add-on heartbeat failed: %s (%s), %s, HTTP status=%s; continuing",
+                monitor_name, slug, type(exc).__name__,
+                code if isinstance(code, int) else "unknown",
+            )
+            continue
+        if sent:
+            pushed += 1
+        log.info("%s (%s) -> %s%s", monitor_name, slug,
+                 "UP" if up else "DOWN", "" if sent else " (cached)")
+
+    log.info("Add-on sync: %d discovered, %d heartbeats sent, %d inactive skipped, %d failed",
+             len(discovered), pushed, skipped, failed)
 
     state["known_slugs"] = sorted(addon["slug"] for addon in discovered)
     state["names"] = {
