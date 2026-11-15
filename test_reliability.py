@@ -177,22 +177,23 @@ class HeartbeatTests(unittest.TestCase):
             return app.push_status_if_needed('http://example.invalid',
                 {'id': 1, 'name': 'device'}, up, 'status', True, state, 180, 60)
 
-    def test_every_cycle_and_immediate_status_change(self):
+    def test_coalesces_unchanged_status_and_sends_transitions(self):
         state = {}
         with patch.object(app, 'push_status') as send:
             self.assertTrue(self.push(state, 1000))
-            self.assertTrue(self.push(state, 1059))
-            self.assertTrue(self.push(state, 1060))
-            self.assertTrue(self.push(state, 1061, False))
-            self.assertTrue(self.push(state, 1062, True))
-            self.assertEqual(send.call_count, 5)
-            self.assertEqual(state['_push_status_cache']['device']['last_push'], 1062)
+            self.assertFalse(self.push(state, 1059))
+            self.assertFalse(self.push(state, 1060))
+            self.assertTrue(self.push(state, 1090))
+            self.assertTrue(self.push(state, 1091, False))
+            self.assertTrue(self.push(state, 1092, True))
+            self.assertEqual(send.call_count, 4)
+            self.assertEqual(state['_push_status_cache']['device']['last_push'], 1092)
 
     def test_failed_push_does_not_advance_success_timestamp(self):
         state = {'_push_status_cache': {'device': {'up': True, 'last_push': 1000}}}
         with patch.object(app, 'push_status', side_effect=TimeoutError):
             with self.assertRaises(TimeoutError):
-                self.push(state, 1060)
+                self.push(state, 1100)
         self.assertEqual(state['_push_status_cache']['device']['last_push'], 1000)
 
     def test_three_down_cycles_and_immediate_recovery(self):
