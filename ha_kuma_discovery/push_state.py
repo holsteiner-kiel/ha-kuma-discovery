@@ -33,12 +33,23 @@ def push_status_if_needed(
     sender,
     now,
 ):
-    """Send every evaluated state; commit the successful heartbeat only after I/O.
+    """Push changes immediately; refresh unchanged states before Kuma expiry.
 
-    Keep the existing call signature and persisted cache format compatible.
-    Callers must obtain a real observation before invoking this helper.
+    Commit the successful heartbeat only after I/O. Preserve the existing
+    persisted cache format and sender signature for compatibility.
     """
     name = str(monitor.get("name") or monitor.get("id") or "unknown")
+    current_time = now()
+    previous = state.get("_push_status_cache", {}).get(name, {})
+    last_push = previous.get("last_push")
+    # Send state changes immediately. For unchanged states, refresh halfway
+    # through Kuma's heartbeat window to preserve a generous safety margin.
+    refresh_after = max(1, heartbeat_interval / 2)
+    if previous.get("up") == bool(up) and isinstance(last_push, (int, float)):
+        age = current_time - last_push
+        if 0 <= age < refresh_after:
+            return False
+
     sender(kuma_url, monitor, up, message, verify_ssl)
     state.setdefault("_push_status_cache", {})[name] = {
         "up": bool(up), "last_push": now(),
