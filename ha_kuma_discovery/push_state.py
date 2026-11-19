@@ -38,6 +38,11 @@ def push_status_if_needed(
     Commit the successful heartbeat only after I/O. Preserve the existing
     persisted cache format and sender signature for compatibility.
     """
+    # Respect an operator-paused Kuma monitor. Pushes to disabled monitors are
+    # rejected by Kuma; skip without changing its status or heartbeat cache.
+    if monitor.get("active", 1) in (0, False, "0", "false", "False"):
+        return False
+
     name = str(monitor.get("name") or monitor.get("id") or "unknown")
     current_time = now()
     previous = state.get("_push_status_cache", {}).get(name, {})
