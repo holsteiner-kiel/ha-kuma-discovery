@@ -24,10 +24,12 @@ class PushReliabilityTests(unittest.TestCase):
         for initial in ({}, {'_push_status_cache': {'sample': {'up': True, 'last_push': 42}}}):
             with self.subTest(initial=initial):
                 state = copy.deepcopy(initial)
-                with patch.object(app, 'push_status', side_effect=TimeoutError('synthetic secret')):
-                    with self.assertRaises(TimeoutError):
-                        app.push_status_if_needed('http://example.invalid', {'name': 'sample'},
-                                                  False, 'test', True, state, 180, 60)
+                with patch.object(app, 'push_status', side_effect=TimeoutError('synthetic secret')), \
+                     self.assertLogs(app.LOG, level='WARNING') as logs:
+                    self.assertFalse(app.push_status_if_needed(
+                        'http://example.invalid', {'name': 'sample'},
+                        False, 'test', True, state, 180, 60))
+                self.assertNotIn('synthetic secret', '\\n'.join(logs.output))
                 self.assertEqual(state, initial)
 
     def test_failed_discovery_never_fabricates_up(self):
