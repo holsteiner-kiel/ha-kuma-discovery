@@ -192,9 +192,45 @@ class HeartbeatTests(unittest.TestCase):
     def test_failed_push_does_not_advance_success_timestamp(self):
         state = {'_push_status_cache': {'device': {'up': True, 'last_push': 1000}}}
         with patch.object(app, 'push_status', side_effect=TimeoutError):
-            with self.assertRaises(TimeoutError):
-                self.push(state, 1100)
+            self.assertFalse(self.push(state, 1100))
         self.assertEqual(state['_push_status_cache']['device']['last_push'], 1000)
+
+    def test_paused_push_is_skipped_without_modifying_cache(self):
+        for active in (0, False, '0', 'false', 'False'):
+            with self.subTest(active=active):
+                state = {'_push_status_cache': {'device': {'up': True, 'last_push': 10}}}
+                before = json.loads(json.dumps(state))
+                monitor = {'id': 1, 'name': 'device', 'active': active}
+                with patch.object(app, 'push_status') as send:
+                    self.assertFalse(app.push_status_if_needed(
+                        'http://example.invalid', monitor, True, 'status',
+                        True, state, 180, 60))
+                    send.assert_not_called()
+                self.assertEqual(state, before)
+
+    def test_paused_or_failed_push_does_not_block_next_device(self):
+        state = {}
+        monitors = [
+            {'id': 1, 'name': 'Somfy: Lichtsensor Westen', 'active': 0},
+            {'id': 2, 'name': 'Somfy: Markise', 'active': 1},
+            {'id': 3, 'name': 'Somfy: Terrassendach', 'active': 1},
+        ]
+        sent = []
+        def send(url, monitor, up, message, verify_ssl):
+            sent.append(monitor['name'])
+            if 'Markise' in monitor['name']:
+                raise TimeoutError('secret push token')
+        with patch.object(app, 'push_status', side_effect=send), \
+             self.assertLogs(app.LOG, level='WARNING') as logs:
+            outcomes = [app.push_status_if_needed(
+                'http://example.invalid', m, True, 'status',
+                True, state, 180, 60) for m in monitors]
+        self.assertEqual(outcomes, [False, False, True])
+        self.assertEqual(sent, ['Somfy: Markise', 'Somfy: Terrassendach'])
+        self.assertNotIn('Somfy: Lichtsensor Westen', state.get('_push_status_cache', {}))
+        self.assertNotIn('Somfy: Markise', state.get('_push_status_cache', {}))
+        self.assertIn('Somfy: Terrassendach', state['_push_status_cache'])
+        self.assertNotIn('secret push token', '\\n'.join(logs.output))
 
     def test_three_down_cycles_and_immediate_recovery(self):
         state = {}
