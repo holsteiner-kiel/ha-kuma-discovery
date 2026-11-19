@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.3.3
+
+### Fixed
+- Skip intentionally paused Uptime Kuma Push monitors across all Push-based discovery integrations without reactivating them or altering the successful-heartbeat cache.
+- Isolate failed Push requests per device, so one paused or failing monitor no longer blocks later devices in the same discovery integration (including Somfy/Overkiz).
+- Record a safe per-monitor warning (exception class and HTTP status) without revealing Push tokens or URLs.
+
+### Tests
+- Add regression coverage for paused monitors, failed heartbeats and continued processing of subsequent devices.
+
+
 ## 2.3.2
 
 ### Fixed
