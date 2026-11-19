@@ -116,18 +116,37 @@ def push_status_if_needed(
     heartbeat_interval,
     sync_interval,
 ):
-    return push_state.push_status_if_needed(
-        kuma_url,
-        monitor,
-        up,
-        message,
-        verify_ssl,
-        state,
-        heartbeat_interval,
-        sync_interval,
-        sender=push_status,
-        now=time.time,
-    )
+    # The same sender is used by every Push-based integration. An operator-
+    # paused monitor or one failed heartbeat must never prevent later devices
+    # within the current integration from being synchronized.
+    if monitor.get("active", 1) in (0, False, "0", "false", "False"):
+        LOG.info("Skipping inactive Uptime Kuma monitor: %s", monitor.get("name"))
+        return False
+    try:
+        return push_state.push_status_if_needed(
+            kuma_url,
+            monitor,
+            up,
+            message,
+            verify_ssl,
+            state,
+            heartbeat_interval,
+            sync_interval,
+            sender=push_status,
+            now=time.time,
+        )
+    except Exception as exc:
+        # Exception strings can contain Push URLs / tokens; log only class and
+        # HTTP status, never response content or the exception message.
+        response = getattr(exc, "response", None)
+        status_code = getattr(response, "status_code", None)
+        LOG.warning(
+            "Push heartbeat failed for %s (%s, HTTP status=%s); continuing",
+            monitor.get("name") or monitor.get("id"),
+            type(exc).__name__,
+            status_code if isinstance(status_code, int) else "unknown",
+        )
+        return False
 
 
 _clean_shelly_name = integration_shelly._clean_shelly_name
