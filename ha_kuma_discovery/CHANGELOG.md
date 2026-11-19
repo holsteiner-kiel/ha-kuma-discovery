@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.3.4
+
+### Fixed
+- Align the startup application version with the add-on manifest so release validation and container publishing succeed.
+- Include the paused-monitor and per-device Push-failure isolation changes introduced in the unsuccessful 2.3.3 build.
+
+### Release notes
+- Replaces 2.3.3, whose release workflow stopped during validation before any image was published.
+
+
 ## 2.3.3
 
 ### Fixed
